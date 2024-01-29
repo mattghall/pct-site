@@ -44,7 +44,30 @@ const selectedIcon = L.icon({
     iconSize: [25, 25],
     iconAnchor: [12.5, 12.5],
     popupAnchor: [0, -12.5]
-});
+})
+
+let selectedMarker = null;
+
+function selectMarker(marker) {
+    if (selectedMarker) {
+        // If there is already a selected marker, re-cluster it
+        markerClusterGroup.addLayer(selectedMarker);
+    }
+
+    // Remove the marker from the cluster and add it to the map
+    markerClusterGroup.removeLayer(marker);
+    marker.addTo(map);
+    selectedMarker = marker;
+}
+
+function unselectMarker() {
+    if (selectedMarker) {
+        // Remove the marker from the map and add it back to the cluster
+        map.removeLayer(selectedMarker);
+        markerClusterGroup.addLayer(selectedMarker);
+        selectedMarker = null;
+    }
+}
 
 
 function initMapWithImages() {
@@ -100,24 +123,42 @@ function initMap() {
     map = L.map('map').setView([47.6062, -122.3321], 6);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 25, attribution: '© OpenStreetMap contributors'
+        maxZoom: 12, attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
     // Load and display the GPX track
     loadRoute(GPX_FILE1);
     setTimeout(() => {
         loadRoute(GPX_FILE2);
-    }, 1000);
-    setTimeout(() => {
-        loadRoute(GPX_FILE3);
-    }, 2000);
+        setTimeout(() => {
+            loadRoute(GPX_FILE3);
+        }, 100);
+    }, 100);
+
     map.addLayer(markerClusterGroup);
+
+    L.Control.ZoomLevel = L.Control.extend({
+        onAdd: function (map) {
+            var zoomLevelDiv = L.DomUtil.create('div', 'zoom-level-control');
+            zoomLevelDiv.innerHTML = 'Zoom: ' + map.getZoom();
+            map.on('zoomend', function () {
+                zoomLevelDiv.innerHTML = 'Zoom: ' + map.getZoom();
+            });
+            return zoomLevelDiv;
+        }
+    });
+
+    L.control.zoomlevel = function (opts) {
+        return new L.Control.ZoomLevel(opts);
+    }
+
+    L.control.zoomlevel({position: 'topright'}).addTo(map);
 }
 
 function addPhotoToMap(image) {
     if (image.latitude && image.longitude) {
         const latLng = L.latLng(image.latitude, image.longitude);
-        const marker = L.marker(latLng, { icon: defaultIcon });
+        const marker = L.marker(latLng, {icon: defaultIcon});
 
         // Bind a popup to the marker
         marker.bindPopup(`<img src="${image.src}" alt="${image.alt}" style="max-width: 100px;"><p>${image.title}</p>`);
@@ -146,6 +187,66 @@ function updateMarkerVisibility() {
 }
 
 
+function handleImageMouseEvents(imgContainer, image) {
+    // Hover event listeners
+    imgContainer.onmouseover = () => {
+        imgContainer.style.borderColor = 'yellow';
+        const marker = markers[`image-${image['#']}`];
+        if (marker) {
+            marker.setIcon(selectedIcon);
+            selectMarker(marker);
+        }
+    };
+    imgContainer.onmouseout = () => {
+        imgContainer.style.borderColor = 'initial';
+        const marker = markers[`image-${image['#']}`];
+        if (marker) {
+            marker.setIcon(defaultIcon);
+            unselectMarker(marker)
+        }
+    };
+
+    imgContainer.onclick = () => {
+        const marker = markers[imgContainer.id];
+        if (marker) {
+            if (previousSelectedMarker) {
+                previousSelectedMarker.setIcon(defaultIcon);
+            }
+            marker.setIcon(selectedIcon);
+            selectMarker(marker)
+            previousSelectedMarker = marker;
+
+            map.flyTo(marker.getLatLng(), 12);
+        }
+    };
+}
+
+function addImageToGallery(image, gallery, loadMoreButton) {
+    const imgContainer = document.createElement('div');
+    imgContainer.classList.add('img-container');
+    imgContainer.id = `image-${image['#']}`;
+    imgContainer.style.opacity = 0;
+
+    const img = document.createElement('img');
+    img.src = image.src;
+    img.alt = image.alt;
+    img.onload = () => {
+        imgContainer.style.opacity = 1;
+    };
+
+    const dateElement = document.createElement('div');
+    dateElement.classList.add('img-date');
+    dateElement.textContent = image.date;
+
+    imgContainer.appendChild(img);
+    imgContainer.appendChild(dateElement);
+    gallery.insertBefore(imgContainer, loadMoreButton);
+    // If the image is cached and already loaded
+    if (img.complete) {
+        imgContainer.style.opacity = 1;
+    }
+    return imgContainer;
+}
 
 function loadMoreImages() {
     const gallery = document.getElementById('photoGallery');
@@ -153,48 +254,8 @@ function loadMoreImages() {
 
     for (let i = loadedImages; i < loadedImages + imagesPerLoad && i < allImages.length; i++) {
         const image = allImages[i];
-
-        const imgContainer = document.createElement('div');
-        imgContainer.classList.add('img-container');
-        imgContainer.id = `image-${image['#']}`;
-        imgContainer.style.opacity = 0;
-
-        const img = document.createElement('img');
-        img.src = image.src;
-        img.alt = image.alt;
-        img.onload = () => {
-            imgContainer.style.opacity = 1;
-        };
-
-        const dateElement = document.createElement('div');
-        dateElement.classList.add('img-date');
-        dateElement.textContent = image.date;
-
-        imgContainer.appendChild(img);
-        imgContainer.appendChild(dateElement);
-        gallery.insertBefore(imgContainer, loadMoreButton);
-        // If the image is cached and already loaded
-        if (img.complete) {
-            imgContainer.style.opacity = 1;
-        }
-
-        // Hover event listener
-        imgContainer.onmouseover = () => imgContainer.style.borderColor = 'yellow';
-        imgContainer.onmouseout = () => imgContainer.style.borderColor = 'initial';
-
-        imgContainer.onclick = () => {
-            const marker = markers[imgContainer.id];
-            if (marker) {
-                if (previousSelectedMarker) {
-                    previousSelectedMarker.setIcon(defaultIcon);
-                }
-                marker.setIcon(selectedIcon);
-                previousSelectedMarker = marker;
-
-                map.flyTo(marker.getLatLng(), 13);
-            }
-        };
-
+        const imgContainer = addImageToGallery(image, gallery, loadMoreButton);
+        handleImageMouseEvents(imgContainer, image);
     }
 
     loadedImages += imagesPerLoad;
@@ -202,6 +263,7 @@ function loadMoreImages() {
     if (loadedImages >= allImages.length) {
         loadMoreButton.style.display = 'none';
     }
+
 }
 
 function startAutoScroll() {

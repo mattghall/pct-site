@@ -222,7 +222,6 @@ a:visited.timestamp-link {
     background-color: rgba(110, 204, 57, 0.6);
 }
 
-
 .img-container {
     flex: 0 0 auto;
     height: 100%;
@@ -268,6 +267,22 @@ a:visited.timestamp-link {
     position: absolute;
     transform: translateX(-50%);
 }
+
+.zoom-level-control {
+    background-color: rgba(255, 255, 255, 0.5);
+    border-radius: 25%;
+    padding: 10px;
+    text-align: center;
+    width: 85px;
+    height: 50px;
+    line-height: 30px;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+    font-weight: bold;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
+
 
 @media screen and (min-width: 768px) {
     .caption {
