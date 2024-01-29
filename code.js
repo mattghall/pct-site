@@ -5,7 +5,7 @@ let allImages = [];
 $(function () {
     feather.replace();
 
-    fetch('images.json') // Replace with the actual path to your JSON file
+    fetch('resources/images.json') // Replace with the actual path to your JSON file
         .then(response => response.json())
         .then(images => {
             allImages = images;
@@ -13,6 +13,9 @@ $(function () {
             setTimeout(document.getElementById('loadMore').style.display = 'flex', 3000);
         })
         .catch(error => console.error('Error loading images:', error));
+
+    var textHeight = $('#introSection').outerHeight();
+    $('.introImg').css('height', textHeight + 15 + 'px');
 });
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -24,12 +27,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }).addTo(map);
 
     // Load and display the GPX track
-    new L.GPX("pct_cleaned.gpx", {
+    new L.GPX("resources/pct_cleaned.gpx", {
         async: true,
         marker_options: {
-            startIconUrl: 'start.png',
-            endIconUrl: 'end.png',
-            shadowUrl: 'shadow.png'
+            startIconUrl: 'resources/start.png',
+            endIconUrl: 'resources/end.png',
+            shadowUrl: 'resources/shadow.png'
         }
     }).on('loaded', function(e) {
         map.fitBounds(e.target.getBounds());
@@ -115,7 +118,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function loadBlogPosts() {
         // Assuming the JSON file is served from your server
-        fetch('blog_posts.json')
+        fetch('resources/blog_posts.json')
             .then(response => response.json())
             .then(posts => {
                 appendPosts(posts);
