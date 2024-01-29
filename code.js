@@ -1,9 +1,9 @@
 let loadedImages = 0;
 const imagesPerLoad = 5; // Number of images to load per click
 let allImages = [];
-let markers = [];
-// let markers = {};
+let markers = {};
 let scrollIntervalId = null;
+var previousSelectedMarker = null;
 
 const BLOG_POST_FILE = 'resources/blog_posts.json';
 const IMAGES_FILE = 'resources/images.json';
@@ -23,6 +23,21 @@ $(function () {
     initBlog();
     initAutoScroll();
 });
+
+const defaultIcon = L.icon({
+    iconUrl: 'resources/camera-gray.svg',
+    iconSize: [25, 25],
+    iconAnchor: [12.5, 12.5],
+    popupAnchor: [0, -12.5]
+});
+
+const selectedIcon = L.icon({
+    iconUrl: 'resources/camera-blue.svg', // Path to your selected icon
+    iconSize: [25, 25],
+    iconAnchor: [12.5, 12.5],
+    popupAnchor: [0, -12.5]
+});
+
 
 function initMapWithImages() {
     for (var image of allImages) {
@@ -91,21 +106,12 @@ function initMap() {
 function addPhotoToMap(image) {
     if (image.latitude && image.longitude) {
         const latLng = L.latLng(image.latitude, image.longitude);
-
-        // Define a custom icon
-        const customIcon = L.icon({
-            iconUrl: 'resources/camera.svg',   // Path to your SVG icon
-            iconSize: [20, 20],              // Size of the icon (width, height)
-            iconAnchor: [10, 10],        // Anchor point of the icon
-            popupAnchor: [10, 10]          // Point where the popup should open relative to the iconAnchor
-        });
-
-        // Create a marker with the custom icon
-        const marker = L.marker(latLng, {icon: customIcon}).addTo(map);
+        const marker = L.marker(latLng, { icon: defaultIcon }).addTo(map);
+        markers[`image-${image['#']}`] = marker;
 
         // Bind a popup to the marker
         marker.bindPopup(`<img src="${image.src}" alt="${image.alt}" style="max-width: 100px;"><p>${image.title}</p>`);
-        markers.push(marker);
+        markers[`image-${image['#']}`] = marker; // Store the marker
 
     } else {
         console.log('Invalid coordinates for image:', image);
@@ -114,9 +120,9 @@ function addPhotoToMap(image) {
 
 function updateMarkerVisibility() {
     const zoomLevel = map.getZoom();
-    const minZoomLevel = 8; // Set the minimum zoom level to show markers
+    const minZoomLevel = 10; // Set the minimum zoom level to show markers
 
-    markers.forEach(marker => {
+    Object.values(markers).forEach(marker => {
         if (zoomLevel >= minZoomLevel) {
             marker.addTo(map);
         } else {
@@ -124,6 +130,7 @@ function updateMarkerVisibility() {
         }
     });
 }
+
 
 
 function loadMoreImages() {
@@ -136,7 +143,7 @@ function loadMoreImages() {
         const imgContainer = document.createElement('div');
         imgContainer.classList.add('img-container');
         imgContainer.id = `image-${image['#']}`;
-        imgContainer.style.opacity = 0; // Start with the container hidden
+        imgContainer.style.opacity = 0;
 
         const img = document.createElement('img');
         img.src = image.src;
@@ -152,11 +159,28 @@ function loadMoreImages() {
         imgContainer.appendChild(img);
         imgContainer.appendChild(dateElement);
         gallery.insertBefore(imgContainer, loadMoreButton);
-        // addPhotoToMap(image);
         // If the image is cached and already loaded
         if (img.complete) {
             imgContainer.style.opacity = 1;
         }
+
+        // Hover event listener
+        imgContainer.onmouseover = () => imgContainer.style.borderColor = 'yellow';
+        imgContainer.onmouseout = () => imgContainer.style.borderColor = 'initial';
+
+        imgContainer.onclick = () => {
+            const marker = markers[imgContainer.id];
+            if (marker) {
+                if (previousSelectedMarker) {
+                    previousSelectedMarker.setIcon(defaultIcon);
+                }
+                marker.setIcon(selectedIcon);
+                previousSelectedMarker = marker;
+
+                map.flyTo(marker.getLatLng(), 13);
+            }
+        };
+
     }
 
     loadedImages += imagesPerLoad;

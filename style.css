@@ -209,6 +209,11 @@ a:visited.timestamp-link {
     position: relative;
     transition: opacity 1s ease-out;
 }
+.img-container {
+    border: 2px solid transparent; /* Default border */
+    transition: border-color 0.3s; /* Smooth transition for border color */
+    /* Other styles as needed */
+}
 
 .img-container img {
     border-radius: 0 10px 0 0;
