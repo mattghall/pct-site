@@ -20,10 +20,6 @@ a {
     text-decoration: none;
 }
 
-#page_body {
-    margin-bottom: 16px;
-}
-
 a:hover {
     color: #2196f3;
 }
@@ -41,6 +37,10 @@ h1 {
     min-height: 40px;
     padding: 30px 40px;
     width: auto;
+}
+
+#page_body {
+    margin-bottom: 16px;
 }
 
 .blog-posts .post-outer-container:last-child {
@@ -107,24 +107,22 @@ h1 {
 }
 
 #photoGallery {
-    align-items: center; /* Align images vertically */
+    align-items: center;
     display: flex;
-    /*white-space: nowrap;*/
-    height: 300px; /* Set the fixed height for the gallery */
+    height: 300px;
     overflow-x: auto;
     scrollbar-width: none;
 }
 
-/* Hide scrollbar for Webkit browsers */
 #photoGallery::-webkit-scrollbar {
     display: none;
 }
 
 .introImg {
-    height: 190px;
-    width: 100%;
-    object-fit: cover;
     border-radius: 5px;
+    height: 190px;
+    object-fit: cover;
+    width: 100%;
 }
 
 a.timestamp-link,
@@ -151,32 +149,23 @@ a:visited.timestamp-link {
 .btn-group button {
     background-color: #5b84b1;
     border: 1px solid navy;
-    /* pct green */
     color: white;
-    /* Green border */
     cursor: pointer;
-    /* White text */
     float: left;
-    /* Some padding */
     margin-top: 0px;
-    /* Pointer/hand icon */
     padding: 10px 24px;
-    /* Float the buttons side by side */
 }
 
 .btn-group button:not(:last-child) {
     border-right: none;
-    /* Prevent double borders */
 }
 
-/* Clear floats (clearfix hack) */
 .btn-group:after {
     clear: both;
     content: "";
     display: table;
 }
 
-/* Add a background color on hover */
 .btn-group button:hover {
     background-color: navy;
 }
@@ -192,9 +181,9 @@ a:visited.timestamp-link {
     height: 100%;
     justify-content: center;
     margin-right: 10px;
-    overflow: hidden; /* Hide overflow */
-    padding: 0 10px; /* Adjust padding as needed */
-    position: relative; /* Necessary for positioning the text span */
+    overflow: hidden;
+    padding: 0 10px;
+    position: relative;
     width: 35px;
 }
 
@@ -203,10 +192,10 @@ a:visited.timestamp-link {
     text-align: center;
     top: 50%;
     transform: translateX(-50%) translateY(-50%) rotate(-90deg);
-    transform: rotate(-90deg); /* Rotates the text */
+    transform: rotate(-90deg);
     transform-origin: center;
-    white-space: nowrap; /* Ensures text stays on one line */
-    width: 300px; /* Set to the height of the button or as needed */
+    white-space: nowrap;
+    width: 300px;
 }
 
 #loadMore:focus {
@@ -214,16 +203,16 @@ a:visited.timestamp-link {
 }
 
 .img-container {
-    flex: 0 0 auto; /* Prevent flex items from growing or shrinking */
+    flex: 0 0 auto;
     height: 100%;
     margin-right: 10px;
     position: relative;
 }
 
 .img-container img {
+    border-radius: 0 10px 0 0;
     height: 100%;
     width: 100%;
-    border-radius: 0 10px 0 0;
 }
 
 .img-date {

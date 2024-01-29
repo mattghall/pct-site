@@ -1,11 +1,14 @@
 let loadedImages = 0;
 const imagesPerLoad = 10; // Number of images to load per click
 let allImages = [];
+let scrollIntervalId = null;
 
-$(function () {
-    feather.replace();
+const BLOG_POST_FILE = 'resources/blog_posts.json';
+const IMAGES_FILE = 'resources/images.json';
+const GPX_FILE = "resources/pct_cleaned.gpx";
 
-    fetch('resources/images.json') // Replace with the actual path to your JSON file
+function initImages() {
+    fetch(IMAGES_FILE)
         .then(response => response.json())
         .then(images => {
             allImages = images;
@@ -13,31 +16,42 @@ $(function () {
             setTimeout(document.getElementById('loadMore').style.display = 'flex', 3000);
         })
         .catch(error => console.error('Error loading images:', error));
+}
 
+function setIntroImageHeight() {
     var textHeight = $('#introSection').outerHeight();
     $('.introImg').css('height', textHeight + 15 + 'px');
+}
+
+$(function () {
+    feather.replace();
+    setIntroImageHeight();
+    initImages();
+    initMap();
+    initBlog();
+    initAutoScroll();
 });
 
-document.addEventListener('DOMContentLoaded', function() {
+
+function initMap() {
     var map = L.map('map').setView([47.6062, -122.3321], 6); // Example coordinates
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '© OpenStreetMap contributors'
+        maxZoom: 19, attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
     // Load and display the GPX track
-    new L.GPX("resources/pct_cleaned.gpx", {
-        async: true,
-        marker_options: {
+    new L.GPX(GPX_FILE, {
+        async: true, marker_options: {
             startIconUrl: 'resources/start.png',
             endIconUrl: 'resources/end.png',
             shadowUrl: 'resources/shadow.png'
         }
-    }).on('loaded', function(e) {
+    }).on('loaded', function (e) {
         map.fitBounds(e.target.getBounds());
     }).addTo(map);
-});
+}
+
 
 function loadMoreImages() {
     const gallery = document.getElementById('photoGallery');
@@ -70,19 +84,6 @@ function loadMoreImages() {
     }
 }
 
-function scrollToImageByDate(targetDate) {
-    const targetImage = allImages.find(image => new Date(image.date).toLocaleDateString() === targetDate);
-    if (targetImage) {
-        const element = document.getElementById(`image-${targetImage['#']}`);
-        if (element) {
-            element.scrollIntoView({behavior: 'smooth'});
-        }
-    }
-}
-
-
-let scrollIntervalId = null;
-
 function startAutoScroll() {
     const gallery = document.getElementById('photoGallery');
     const scrollAmount = 1;
@@ -102,35 +103,15 @@ function stopAutoScroll() {
     clearInterval(scrollIntervalId);
 }
 
-document.addEventListener('DOMContentLoaded', function () {
+function initAutoScroll() {
     const gallery = document.getElementById('photoGallery');
-
     startAutoScroll();
-
     gallery.addEventListener('mouseover', stopAutoScroll);
     gallery.addEventListener('mouseout', startAutoScroll);
-});
+}
 
-document.addEventListener('DOMContentLoaded', function() {
-    const container = document.getElementById('blog-posts');
-    let currentPostIndex = 0;
-    const postsPerPage = 5;
-
-    function loadBlogPosts() {
-        // Assuming the JSON file is served from your server
-        fetch('resources/blog_posts.json')
-            .then(response => response.json())
-            .then(posts => {
-                appendPosts(posts);
-            });
-    }
-
-    function appendPosts(posts) {
-        for (let i = currentPostIndex; i < currentPostIndex + postsPerPage && i < posts.length; i++) {
-            const post = posts[i];
-            const postElement = document.createElement('article');
-            postElement.className = 'post-outer-container';
-            postElement.innerHTML = `
+function buildBlogPostDiv(postElement, post, i) {
+    postElement.innerHTML = `
                 <div class="post-outer">
                     <div class="post">
                         <h3 class="post-title entry-title">
@@ -156,6 +137,29 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
             `;
+}
+
+
+function initBlog() {
+    const container = document.getElementById('blog-posts');
+    let currentPostIndex = 0;
+    const postsPerPage = 5;
+
+    function loadBlogPosts() {
+        // Assuming the JSON file is served from your server
+        fetch(BLOG_POST_FILE)
+            .then(response => response.json())
+            .then(posts => {
+                appendPosts(posts);
+            });
+    }
+
+    function appendPosts(posts) {
+        for (let i = currentPostIndex; i < currentPostIndex + postsPerPage && i < posts.length; i++) {
+            const post = posts[i];
+            const postElement = document.createElement('article');
+            postElement.className = 'post-outer-container';
+            buildBlogPostDiv(postElement, post, i);
             container.appendChild(postElement);
         }
         currentPostIndex += postsPerPage;
@@ -165,13 +169,11 @@ document.addEventListener('DOMContentLoaded', function() {
         return window.innerHeight + window.scrollY >= document.body.offsetHeight - 100;
     }
 
-    window.addEventListener('scroll', function() {
+    window.addEventListener('scroll', function () {
         if (isNearBottom()) {
             loadBlogPosts();
         }
     });
-
     // Initial load
     loadBlogPosts();
-});
-
+}
