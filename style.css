@@ -202,6 +202,27 @@ a:visited.timestamp-link {
     outline: none;
 }
 
+
+.marker-cluster-small {
+    background-color: rgba(110, 204, 57, 0.6);
+}
+.marker-cluster-small div {
+    background-color: rgba(110, 204, 57, 0.6);
+}
+.marker-cluster-medium {
+    background-color: rgba(110, 204, 57, 0.6);
+}
+.marker-cluster-medium div {
+    background-color: rgba(110, 204, 57, 0.6);
+}
+.marker-cluster-large {
+    background-color: rgba(110, 204, 57, 0.6);
+}
+.marker-cluster-large div {
+    background-color: rgba(110, 204, 57, 0.6);
+}
+
+
 .img-container {
     flex: 0 0 auto;
     height: 100%;

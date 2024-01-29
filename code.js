@@ -4,6 +4,15 @@ let allImages = [];
 let markers = {};
 let scrollIntervalId = null;
 var previousSelectedMarker = null;
+const markerClusterGroup = L.markerClusterGroup({
+    showCoverageOnHover: false,
+    zoomToBoundsOnClick: true,
+    spiderfyOnMaxZoom: true,
+    removeOutsideVisibleBounds: true,
+    animate: true,
+    maxClusterRadius: 50, // pixels
+    chunkedLoading: true
+});
 
 const BLOG_POST_FILE = 'resources/blog_posts.json';
 const IMAGES_FILE = 'resources/images.json';
@@ -15,11 +24,10 @@ var map;
 let currentGPXLayer = null;
 
 $(function () {
-    map = L.map('map').setView([47.6062, -122.3321], 6);
     feather.replace();
+    initMap();
     setIntroImageHeight();
     initImages();
-    initMap();
     initBlog();
     initAutoScroll();
 });
@@ -43,8 +51,8 @@ function initMapWithImages() {
     for (var image of allImages) {
         addPhotoToMap(image);
     }
-    map.on('zoomend', updateMarkerVisibility);
-    updateMarkerVisibility()
+    // map.on('zoomend', updateMarkerVisibility);
+    // updateMarkerVisibility()
 }
 
 function initImages() {
@@ -89,6 +97,8 @@ function loadRoute(routeFile, color = '#FF5733') {
 }
 
 function initMap() {
+    map = L.map('map').setView([47.6062, -122.3321], 6);
+
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 25, attribution: '© OpenStreetMap contributors'
     }).addTo(map);
@@ -101,18 +111,22 @@ function initMap() {
     setTimeout(() => {
         loadRoute(GPX_FILE3);
     }, 2000);
+    map.addLayer(markerClusterGroup);
 }
 
 function addPhotoToMap(image) {
     if (image.latitude && image.longitude) {
         const latLng = L.latLng(image.latitude, image.longitude);
-        const marker = L.marker(latLng, { icon: defaultIcon }).addTo(map);
-        markers[`image-${image['#']}`] = marker;
+        const marker = L.marker(latLng, { icon: defaultIcon });
 
         // Bind a popup to the marker
         marker.bindPopup(`<img src="${image.src}" alt="${image.alt}" style="max-width: 100px;"><p>${image.title}</p>`);
-        markers[`image-${image['#']}`] = marker; // Store the marker
 
+        // Add the marker to the cluster group instead of directly to the map
+        markerClusterGroup.addLayer(marker);
+
+        // Store the marker for later reference
+        markers[`image-${image['#']}`] = marker;
     } else {
         console.log('Invalid coordinates for image:', image);
     }
