@@ -207,12 +207,17 @@ a:visited.timestamp-link {
     height: 100%;
     margin-right: 10px;
     position: relative;
+    transition: opacity 1s ease-out;
 }
 
 .img-container img {
     border-radius: 0 10px 0 0;
     height: 100%;
     width: 100%;
+}
+
+.leaflet-popup-content {
+    width: auto !important;
 }
 
 .img-date {
