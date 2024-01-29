@@ -74,8 +74,6 @@ function initMapWithImages() {
     for (var image of allImages) {
         addPhotoToMap(image);
     }
-    // map.on('zoomend', updateMarkerVisibility);
-    // updateMarkerVisibility()
 }
 
 function initImages() {
@@ -95,7 +93,7 @@ function setIntroImageHeight() {
     $('.introImg').css('height', textHeight + 15 + 'px');
 }
 
-function loadRoute(routeFile, color = '#FF5733') {
+function loadRoute(routeFile, color = '#bb2100') {
     // Create the new route layer but don't add it to the map yet
     let newGPXLayer = new L.GPX(routeFile, {
         async: true, polyline_options: {

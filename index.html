@@ -31,8 +31,9 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-gpx/gpx.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/MarkerCluster.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/MarkerCluster.Default.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/MarkerCluster.css"/>
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/MarkerCluster.Default.css"/>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/leaflet.markercluster.js"></script>
 
 
@@ -67,7 +68,7 @@
         </div>
     </div>
     <div class="row">
-        <div  class="col-12 col-lg-7">
+        <div class="col-12 col-lg-7">
             <section id="introSection">
                 <h2 style="display: none">Introduction</h2>
                 <p>Thanks for following my PCT journey.</p>
@@ -108,8 +109,16 @@
 </div>
 <div class="container">
     <div class="row">
-        <div title="map" class="col-12">
+        <div title="Featured Photo" class="col-12 d-lg-none">
+            <img class="featured-photo mobile" alt="Photo in front of PCT sign"
+                 src="https://photos.mattghall.com/pct/PXL_073.webp">
+        </div>
+        <div title="map" class="col-12 col-lg-5">
             <div id="map" style="height: 400px;"></div>
+        </div>
+        <div class="col-7 d-none d-lg-block">
+            <img class="featured-photo desktop" alt="Photo in front of PCT sign"
+                 src="https://photos.mattghall.com/pct/PXL_073.webp">
         </div>
         <div title="blog" class="col-12">
             <h1><a href="https://mattghall-pct.blogspot.com/" target="_blank">The Blog</a></h1>

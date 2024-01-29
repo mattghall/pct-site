@@ -1,3 +1,8 @@
+html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
 body {
     background-color: #eeeeee;
     color: #757575;
@@ -30,6 +35,17 @@ h1 {
 
 #photoRow {
     margin: 10px 10px;
+}
+
+.featured-photo {
+    width: 100%;
+    height: 600px;
+    object-fit: cover;
+}
+
+.mobile {
+    height: 200px;
+    margin: 10px 0 10px 0;
 }
 
 #page_body .blog-posts .post-outer-container {
@@ -206,18 +222,23 @@ a:visited.timestamp-link {
 .marker-cluster-small {
     background-color: rgba(110, 204, 57, 0.6);
 }
+
 .marker-cluster-small div {
     background-color: rgba(110, 204, 57, 0.6);
 }
+
 .marker-cluster-medium {
     background-color: rgba(110, 204, 57, 0.6);
 }
+
 .marker-cluster-medium div {
     background-color: rgba(110, 204, 57, 0.6);
 }
+
 .marker-cluster-large {
     background-color: rgba(110, 204, 57, 0.6);
 }
+
 .marker-cluster-large div {
     background-color: rgba(110, 204, 57, 0.6);
 }
@@ -229,6 +250,7 @@ a:visited.timestamp-link {
     position: relative;
     transition: opacity 1s ease-out;
 }
+
 .img-container {
     border: 2px solid transparent; /* Default border */
     transition: border-color 0.3s; /* Smooth transition for border color */
@@ -276,7 +298,7 @@ a:visited.timestamp-link {
     width: 85px;
     height: 50px;
     line-height: 30px;
-    box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
     font-weight: bold;
     position: absolute;
     top: 10px;
@@ -296,5 +318,9 @@ a:visited.timestamp-link {
 
     .bgimg-1 {
         height: 30%;
+    }
+
+    #map {
+        height: 600px !important;
     }
 }
