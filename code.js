@@ -114,7 +114,6 @@ function loadRoute(routeFile, color = '#bb2100') {
             map.fitBounds(e.target.getBounds());
         }
     });
-
 }
 
 function initMap() {
@@ -160,7 +159,10 @@ function addPhotoToMap(image) {
 
         // Bind a popup to the marker
         marker.bindPopup(`<img src="${image.src}" alt="${image.alt}" style="max-width: 100px;"><p>${image.title}</p>`);
-
+        marker.on('click', function () {
+            selectMarker(marker);
+            $(".featured-photo").attr("src", image.src);
+        });
         // Add the marker to the cluster group instead of directly to the map
         markerClusterGroup.addLayer(marker);
 
@@ -170,20 +172,6 @@ function addPhotoToMap(image) {
         console.log('Invalid coordinates for image:', image);
     }
 }
-
-function updateMarkerVisibility() {
-    const zoomLevel = map.getZoom();
-    const minZoomLevel = 10; // Set the minimum zoom level to show markers
-
-    Object.values(markers).forEach(marker => {
-        if (zoomLevel >= minZoomLevel) {
-            marker.addTo(map);
-        } else {
-            map.removeLayer(marker);
-        }
-    });
-}
-
 
 function handleImageMouseEvents(imgContainer, image) {
     // Hover event listeners
@@ -211,7 +199,8 @@ function handleImageMouseEvents(imgContainer, image) {
                 previousSelectedMarker.setIcon(defaultIcon);
             }
             marker.setIcon(selectedIcon);
-            selectMarker(marker)
+            selectMarker(marker);
+            $(".featured-photo").attr("src", image.src);
             previousSelectedMarker = marker;
 
             map.flyTo(marker.getLatLng(), 12);

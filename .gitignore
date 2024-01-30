@@ -2,3 +2,6 @@
 .idea/modules.xml
 .idea/vcs.xml
 .idea/pct.iml
+.idea/prettier.xml
+.idea/jsLibraryMappings.xml
+.idea/jsLinters/jshint.xml
