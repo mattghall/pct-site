@@ -83,9 +83,9 @@
     "src": "https://photos.mattghall.com/pct/PXL_007.webp",
     "alt": "Trail through trees leading up mountains",
     "date": "2023-08-22T08:14:41",
-    "altitude": null,
-    "latitude": null,
-    "longitude": null
+    "altitude": 1584,
+    "latitude": 47.650536,
+    "longitude": -121.141334
   },
   {
     "#": 8,
@@ -94,9 +94,9 @@
     "src": "https://photos.mattghall.com/pct/PXL_008.webp",
     "alt": "Trail leading up the pass between two mountains",
     "date": "2023-08-22T08:21:48",
-    "altitude": null,
-    "latitude": null,
-    "longitude": null
+    "altitude": 1590,
+    "latitude": 47.651014,
+    "longitude": -121.141155
   },
   {
     "#": 9,
@@ -105,9 +105,9 @@
     "src": "https://photos.mattghall.com/pct/PXL_009.webp",
     "alt": "Trail I'd just climbed up mountain",
     "date": "2023-08-22T08:34:04",
-    "altitude": null,
-    "latitude": null,
-    "longitude": null
+    "altitude": 1678,
+    "latitude": 47.649483,
+    "longitude": -121.144364
   },
   {
     "#": 10,
@@ -455,11 +455,11 @@
     "title": "PXL_041",
     "file": "PXL_041.webp",
     "src": "https://photos.mattghall.com/pct/PXL_041.webp",
-    "alt": "Sun setting over a lake",
+    "alt": "Sun rising over ridge lake",
     "date": "2023-08-25T07:32:56",
-    "altitude": null,
-    "latitude": null,
-    "longitude": null
+    "altitude": 1615,
+    "latitude": 47.461779,
+    "longitude": -121.367630
   },
   {
     "#": 42,
@@ -600,9 +600,9 @@
     "src": "https://photos.mattghall.com/pct/PXL_054.webp",
     "alt": "Hot cup of coffee overlooking a valley",
     "date": "2023-08-28T06:52:04",
-    "altitude": null,
-    "latitude": null,
-    "longitude": null
+    "altitude": 1474.7,
+    "latitude": 47.13659167,
+    "longitude": -121.3498306
   },
   {
     "#": 55,
@@ -677,9 +677,9 @@
     "src": "https://photos.mattghall.com/pct/PXL_061.webp",
     "alt": "Trail leading through burned forest",
     "date": "2023-08-28T13:35:21",
-    "altitude": null,
-    "latitude": null,
-    "longitude": null
+    "altitude": 1476.2,
+    "latitude": 47.046518,
+    "longitude": -121.384524
   },
   {
     "#": 62,
@@ -699,9 +699,9 @@
     "src": "https://photos.mattghall.com/pct/PXL_063.webp",
     "alt": "Trail through burned forest",
     "date": "2023-08-28T15:16:55",
-    "altitude": null,
-    "latitude": null,
-    "longitude": null
+    "altitude": 1793,
+    "latitude": 47.042585,
+    "longitude": -121.390924
   },
   {
     "#": 64,
@@ -1436,9 +1436,9 @@
     "src": "https://photos.mattghall.com/pct/PXL_130.webp",
     "alt": "Selfie with Marija just before heading out",
     "date": "2023-09-04T06:35:11",
-    "altitude": null,
-    "latitude": null,
-    "longitude": null
+    "altitude": 1598,
+    "latitude": 46.2838420,
+    "longitude": -121.5050130
   },
   {
     "#": 131,
@@ -1709,11 +1709,11 @@
     "title": "PXL_155",
     "file": "PXL_155.webp",
     "src": "https://photos.mattghall.com/pct/PXL_155.webp",
-    "alt": "LAke in the woods",
+    "alt": "Lake in the woods",
     "date": "2023-09-07T07:53:04",
-    "altitude": null,
-    "latitude": null,
-    "longitude": null
+    "altitude": 1229.8,
+    "latitude": 45.9290550,
+    "longitude": -121.8003840
   },
   {
     "#": 156,

@@ -4,6 +4,7 @@ let allImages = [];
 let markers = {};
 let scrollIntervalId = null;
 var previousSelectedMarker = null;
+
 const markerClusterGroup = L.markerClusterGroup({
     showCoverageOnHover: false,
     zoomToBoundsOnClick: true,
@@ -30,6 +31,12 @@ $(function () {
     initImages();
     initBlog();
     initAutoScroll();
+    document.addEventListener('click', function (event) {
+        // Check if the clicked element is not an image and not part of the map
+        if (!event.target.matches('img') && !event.target.closest('#map') && selectedMarker) {
+            unselectMarker(selectedMarker);
+        }
+    });
 });
 
 const defaultIcon = L.icon({
@@ -46,15 +53,21 @@ const selectedIcon = L.icon({
     popupAnchor: [0, -12.5]
 })
 
+const hoverIcon = L.icon({
+    iconUrl: 'resources/camera-orange.svg', // Path to your selected icon
+    iconSize: [25, 25],
+    iconAnchor: [12.5, 12.5],
+    popupAnchor: [0, -12.5]
+})
+
 let selectedMarker = null;
 
-function selectMarker(marker) {
-    if (selectedMarker) {
-        // If there is already a selected marker, re-cluster it
-        markerClusterGroup.addLayer(selectedMarker);
-    }
+function selectMarker(marker, image) {
+    unselectMarker();
+    $(".featured-photo").attr("src", image.src);
 
     // Remove the marker from the cluster and add it to the map
+    marker.setIcon(selectedIcon);
     markerClusterGroup.removeLayer(marker);
     marker.addTo(map);
     selectedMarker = marker;
@@ -63,9 +76,40 @@ function selectMarker(marker) {
 function unselectMarker() {
     if (selectedMarker) {
         // Remove the marker from the map and add it back to the cluster
+        selectedMarker.setIcon(defaultIcon);
         map.removeLayer(selectedMarker);
         markerClusterGroup.addLayer(selectedMarker);
         selectedMarker = null;
+    }
+}
+
+let hoveredMarker = null;
+
+function hoverMarker(marker, image) {
+    if (hoveredMarker) {
+        // If there is already a selected marker, re-cluster it
+        markerClusterGroup.addLayer(hoveredMarker);
+    }
+    $(".featured-photo").attr("src", image.src);
+
+    // Remove the marker from the cluster and add it to the map
+    marker.setIcon(hoverIcon);
+    markerClusterGroup.removeLayer(marker);
+    marker.addTo(map);
+    hoveredMarker = marker;
+}
+
+function unhoverMarker(marker, image) {
+    if (hoveredMarker) {
+        if (marker === selectedMarker) {
+            selectMarker(marker, image);
+            return;
+        }
+        // Remove the marker from the map and add it back to the cluster
+        marker.setIcon(defaultIcon);
+        map.removeLayer(hoveredMarker);
+        markerClusterGroup.addLayer(hoveredMarker);
+        hoveredMarker = null;
     }
 }
 
@@ -134,22 +178,22 @@ function initMap() {
 
     map.addLayer(markerClusterGroup);
 
-    L.Control.ZoomLevel = L.Control.extend({
-        onAdd: function (map) {
-            var zoomLevelDiv = L.DomUtil.create('div', 'zoom-level-control');
-            zoomLevelDiv.innerHTML = 'Zoom: ' + map.getZoom();
-            map.on('zoomend', function () {
-                zoomLevelDiv.innerHTML = 'Zoom: ' + map.getZoom();
-            });
-            return zoomLevelDiv;
-        }
-    });
-
-    L.control.zoomlevel = function (opts) {
-        return new L.Control.ZoomLevel(opts);
-    }
-
-    L.control.zoomlevel({position: 'topright'}).addTo(map);
+    // L.Control.ZoomLevel = L.Control.extend({
+    //     onAdd: function (map) {
+    //         var zoomLevelDiv = L.DomUtil.create('div', 'zoom-level-control');
+    //         zoomLevelDiv.innerHTML = 'Zoom: ' + map.getZoom();
+    //         map.on('zoomend', function () {
+    //             zoomLevelDiv.innerHTML = 'Zoom: ' + map.getZoom();
+    //         });
+    //         return zoomLevelDiv;
+    //     }
+    // });
+    //
+    // L.control.zoomlevel = function (opts) {
+    //     return new L.Control.ZoomLevel(opts);
+    // }
+    //
+    // L.control.zoomlevel({position: 'topright'}).addTo(map);
 }
 
 function addPhotoToMap(image) {
@@ -160,8 +204,7 @@ function addPhotoToMap(image) {
         // Bind a popup to the marker
         marker.bindPopup(`<img src="${image.src}" alt="${image.alt}" style="max-width: 100px;"><p>${image.title}</p>`);
         marker.on('click', function () {
-            selectMarker(marker);
-            $(".featured-photo").attr("src", image.src);
+            selectMarker(marker, image);
         });
         // Add the marker to the cluster group instead of directly to the map
         markerClusterGroup.addLayer(marker);
@@ -173,36 +216,31 @@ function addPhotoToMap(image) {
     }
 }
 
+
+var markerClicked = false;
+
 function handleImageMouseEvents(imgContainer, image) {
     // Hover event listeners
     imgContainer.onmouseover = () => {
         imgContainer.style.borderColor = 'yellow';
         const marker = markers[`image-${image['#']}`];
         if (marker) {
-            marker.setIcon(selectedIcon);
-            selectMarker(marker);
+            hoverMarker(marker, image);
         }
     };
     imgContainer.onmouseout = () => {
         imgContainer.style.borderColor = 'initial';
         const marker = markers[`image-${image['#']}`];
         if (marker) {
-            marker.setIcon(defaultIcon);
-            unselectMarker(marker)
+            unhoverMarker(marker, image);
         }
     };
 
     imgContainer.onclick = () => {
+        markerClicked = true;
         const marker = markers[imgContainer.id];
         if (marker) {
-            if (previousSelectedMarker) {
-                previousSelectedMarker.setIcon(defaultIcon);
-            }
-            marker.setIcon(selectedIcon);
-            selectMarker(marker);
-            $(".featured-photo").attr("src", image.src);
-            previousSelectedMarker = marker;
-
+            selectMarker(marker, image);
             map.flyTo(marker.getLatLng(), 12);
         }
     };
