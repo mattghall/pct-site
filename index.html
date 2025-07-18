@@ -28,13 +28,16 @@
           onError="this.onerror=null;this.src='favicon/favicon-16x16.png';" rel="icon" sizes="16x16"
           type="image/png"/>
 
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
+    <link href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" rel="stylesheet"/>
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-gpx/gpx.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/MarkerCluster.css"/>
-    <link rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/MarkerCluster.Default.css"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/MarkerCluster.css" rel="stylesheet"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/MarkerCluster.Default.css"
+          rel="stylesheet"/>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/leaflet.markercluster.js"></script>
+    <script src='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/Leaflet.fullscreen.min.js'></script>
+    <link href='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/leaflet.fullscreen.css'
+          rel='stylesheet'/>
 
 
     <link href="favicon/pct-favicon.ico" rel="shortcut icon" type="image/x-icon"/>
@@ -56,10 +59,14 @@
 <div class="container">
     <div class="row mb-3 mt-0">
         <div class="btn-group" style="width: 100%;">
-            <button onclick="window.location.href = 'https://instagram.com/mattghall';" style="width: 33.3%;">
+            <button onclick="window.location.href = 'https://share.garmin.com/mattghall';"
+                    style="width: 25%; background-color: #c82333">
+                LIVE TRACK
+            </button>
+            <button onclick="window.location.href = 'https://instagram.com/mattghall';" style="width: 25%;">
                 Instagram
             </button>
-            <button onclick="window.location.href = 'https://mattghall-pct.blogspot.com/?m=1';" style="width: 33.3%;">
+            <button onclick="window.location.href = 'https://mattghall-pct.blogspot.com/?m=1';" style="width: 25%;">
                 Blog
             </button>
             <button onclick="window.location.href = 'https://photos.app.goo.gl/4cqYqGEXtBx6qTFw5';"
@@ -72,30 +79,44 @@
             <section id="introSection">
                 <h2 style="display: none">Introduction</h2>
                 <p>Thanks for following my PCT journey.</p>
-                <p class="tab text-justify">
-                    Summer 2023 I hiked the PNW from Stevens Pass, WA to McKenzie Pass, OR in about 30 days. Forest
-                    fires
-                    thwarted my original plan of hiking the entirety of Washington State, so I'll have to come back and
-                    finish
-                    later. Starting August 21st 2023, I hiked 515 miles through <a
+                <p class="text-justify">
+
+                    Surprise! I got laid off and have nothing to do but hike. <br/><br/>
+
+                    This Summer 2025, I'm pickin up where I left off to finish Oregon and start making a dent in California. 
+                    At some point I'll flip flop back up to finish the North Cascades section in Washington 
+                    and then decide which part of California to tackle next. Stay tuned for updates on Instagram and my 
+                    <a href="https://mattghall-pct.blogspot.com/" target="_blank">inReach blog</a> which may or may not still work.
+
+                    <br/><br/>
+                    Last July 2024, I hiked <a
+                        href="https://www.pcta.org/wp-content/uploads/2019/12/PCT-overview-map-on-1-page-by-Magellan-v.1.2018.jpg"
+                        target="_blank">PCT
+                    sections E→D</a> from McKenzie Pass to Cascade Crest and knocked out another 143 trail miles of the
+                    PCT. My cousin John Michael joined for these two legs and we finished in 8 days.
+                    <br/><br/>
+                    Summer 2023 I hiked sections J→F from Stevens Pass, WA to McKenzie Pass, OR in about 30 days. Forest
+                    fires thwarted my original plan of hiking the entirety of Washington State, so I'll have to come
+                    back and finish later. Starting August 21st 2023, I hiked 515 miles through <a
                         href="https://www.pcta.org/wp-content/uploads/2019/12/PCT-overview-map-on-1-page-by-Magellan-v.1.2018.jpg"
                         target="_blank">PCT
                     sections J→F</a>.
                     Throughout the trip I posted daily updates here. Check my <a
                         href="https://www.instagram.com/mattghall">Instagram</a>
                     PCT highlight stories for more pictures/videos from the trip.
-                    During the trip you could follow live <a href="https://share.garmin.com/mattghall"
-                                                             target="_blank">tracking
-                    of my progress via Garmin inReach</a>.
+                    <br/><br/>
+                    Follow live <a href="https://share.garmin.com/mattghall"
+                                   target="_blank">tracking
+                    of my progress via Garmin inReach</a> from July 6th-July 14th.
                 </p>
             </section>
         </div>
         <div class="col-5 d-none d-lg-block m-0 p-0">
-            <img class="introImg" alt="Photo in front of PCT sign" src="https://photos.mattghall.com/pct/PXL_073.webp">
+            <img alt="Photo in front of PCT sign" class="introImg" src="https://photos.mattghall.com/pct/PXL_073.webp">
         </div>
     </div>
 </div>
-<div id="photoRow" class="container-fluid">
+<div class="container-fluid" id="photoRow">
     <div class="row">
         <div class="col">
             <div id="photoGallery">
@@ -109,29 +130,31 @@
 </div>
 <div class="container">
     <div class="row">
-        <div title="Featured Photo" class="col-12 d-lg-none">
-            <img class="featured-photo mobile" alt="Photo in front of PCT sign"
+        <div class="col-12 d-lg-none" title="Featured Photo">
+            <img alt="Photo in front of PCT sign" class="featured-photo mobile"
                  src="https://photos.mattghall.com/pct/PXL_073.webp">
         </div>
-        <div title="map" class="col-12 col-lg-5">
+        <div class="col-12 col-lg-5" title="map">
             <div id="map" style="height: 400px;"></div>
         </div>
         <div class="col-7 d-none d-lg-block">
-            <img class="featured-photo desktop" alt="Photo in front of PCT sign"
+            <img alt="Photo in front of PCT sign" class="featured-photo desktop"
                  src="https://photos.mattghall.com/pct/PXL_073.webp">
         </div>
-        <div title="blog" class="col-12">
-            <h1><a href="https://mattghall-pct.blogspot.com/" target="_blank">The Blog</a></h1>
+        <div class="col-12" title="blog">
+            <h1><a href="https://mattghall-pct.blogspot.com/" target="_blank">The Blog*</a></h1>
             <section>
                 <h2 style="display: none">Blog Intro</h2>
                 <p>
+                    This will NOT be updated live here. To see most recent updates check <a
+                        href="https://mattghall-pct.blogspot.com/" target="_blank">https://mattghall-pct.blogspot.com</a>.<br/>
                     I didn't have cell service for most of the trip, but I was able to post here via my Garmin inReach
                     daily.<br/>
                     <sub>Note: I was limited to 160 characters with no line breaks; sorry for the formatting.</sub>
                 </p>
             </section>
             <div id="page_body" name="Page Body">
-                <div id="blog-posts" class="blog-posts">
+                <div class="blog-posts" id="blog-posts">
                 </div>
             </div>
         </div>
@@ -139,7 +162,7 @@
 </div>
 <div class="row justify-content-center bg-dark text-white" id="footer-row">
     <div class="col-12 text-center px-1 px-md-2 pt-1" id="footer-title" style="">trailmatt.com - <span
-            class="version-span">3.0</span></div>
+            class="version-span">3.3</span></div>
     <div class="social text-center col-12 px-1 px-md-2 pb-1">
         <div>
             <a class="btn btn-outline-light btn-floating m-1" href="https://mattghall.com" role="button"
