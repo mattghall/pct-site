@@ -20,9 +20,15 @@ const IMAGES_FILE = 'resources/images.json';
 const GPX_FILE1 = "resources/pct_tiny.gpx";
 const GPX_FILE2 = "resources/pct_small.gpx";
 const GPX_FILE3 = "resources/pct_cleaned.gpx";
+const GPX_FILE1a = "resources/Toashsm.gpx";
+const GPX_FILE2a = "resources/Toashmed.gpx";
+const GPX_FILE3a = "resources/Toashbig.gpx";
 
 var map;
 let currentGPXLayer = null;
+let currentAshGPXLayer = null;
+let mainBounds = null;
+let ashBounds = null;
 
 $(function () {
     feather.replace();
@@ -153,9 +159,33 @@ function loadRoute(routeFile, color = '#bb2100') {
         currentGPXLayer = newGPXLayer;
 
         newGPXLayer.addTo(map);
+        mainBounds = e.target.getBounds();
+        if (routeFile === GPX_FILE1) {       
+            map.fitBounds(mainBounds);
+        }
+    });
+}
 
-        if (routeFile === GPX_FILE1) {
-            map.fitBounds(e.target.getBounds());
+function loadAshRoute(routeFile, color = '#bb2100') {
+    // Create the new route layer but don't add it to the map yet
+    let newGPXLayer = new L.GPX(routeFile, {
+        async: true, polyline_options: {
+            color: color, opacity: 0.75, weight: 2
+        }, marker_options: {
+            startIconUrl: 'resources/start.png', endIconUrl: 'resources/end.png', shadowUrl: 'resources/shadow.png'
+        }
+    }).on('loaded', function (e) {
+        // Once the new route is loaded, remove the old route
+        if (currentAshGPXLayer) {
+            map.removeLayer(currentAshGPXLayer);
+        }
+        currentAshGPXLayer = newGPXLayer;
+
+        newGPXLayer.addTo(map);
+        ashBounds = e.target.getBounds()
+        if (routeFile === GPX_FILE1a && mainBounds && ashBounds) {       
+            const combinedBounds = mainBounds.extend(ashBounds);
+            map.fitBounds(combinedBounds);;
         }
     });
 }
@@ -169,10 +199,13 @@ function initMap() {
 
     // Load and display the GPX track
     loadRoute(GPX_FILE1);
+    loadAshRoute(GPX_FILE1a);
     setTimeout(() => {
         loadRoute(GPX_FILE2);
+        loadAshRoute(GPX_FILE2a)
         setTimeout(() => {
             loadRoute(GPX_FILE3);
+            loadAshRoute(GPX_FILE3a)
         }, 100);
     }, 100);
 
