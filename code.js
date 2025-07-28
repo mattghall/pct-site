@@ -27,6 +27,8 @@ const GPX_FILE3a = "resources/Toashbig.gpx";
 var map;
 let currentGPXLayer = null;
 let currentAshGPXLayer = null;
+let mainBounds = null;
+let ashBounds = null;
 
 $(function () {
     feather.replace();
@@ -157,9 +159,9 @@ function loadRoute(routeFile, color = '#bb2100') {
         currentGPXLayer = newGPXLayer;
 
         newGPXLayer.addTo(map);
-
-        if (routeFile === GPX_FILE1) {
-            map.fitBounds(e.target.getBounds());
+        mainBounds = e.target.getBounds();
+        if (routeFile === GPX_FILE1) {       
+            map.fitBounds(mainBounds);
         }
     });
 }
@@ -180,6 +182,11 @@ function loadAshRoute(routeFile, color = '#bb2100') {
         currentAshGPXLayer = newGPXLayer;
 
         newGPXLayer.addTo(map);
+        ashBounds = e.target.getBounds()
+        if (routeFile === GPX_FILE1a && mainBounds && ashBounds) {       
+            const combinedBounds = mainBounds.extend(ashBounds);
+            map.fitBounds(combinedBounds);;
+        }
     });
 }
 
