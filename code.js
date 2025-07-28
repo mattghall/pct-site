@@ -143,13 +143,56 @@ function setIntroImageHeight() {
     $('.introImg').css('height', textHeight + 15 + 'px');
 }
 
+async function getLegs() {
+  try {
+    const response = await fetch('https://34vkzcqff9.execute-api.us-west-2.amazonaws.com/');
+    const data = await response.json();
+
+    const legs = data['gpx-legs'] || [];
+
+    legs.forEach((legGpx) => {
+      loadLeg(legGpx);
+    });
+  } catch (error) {
+    console.error('Error fetching legs:', error);
+  }
+}
+
+let colors = Array.from({ length: 100 }, (_, i) => {
+  const hue = Math.round((i / 100) * 360);
+  return `hsl(${hue}, 70%, 50%)`;
+});
+
+let legColorIndex = 0;
+
+function loadLeg(legGpx) {
+  const color = colors[legColorIndex % colors.length];
+  legColorIndex++;
+
+  let legLayer = new L.GPX(legGpx, {
+    async: true,
+    polyline_options: {
+      color: color,
+      opacity: 0.75,
+      weight: 2
+    },
+    marker_options: {
+      startIconUrl: 'resources/shadow.png',
+      endIconUrl: 'resources/shadow.png',
+      shadowUrl: 'resources/shadow.png'
+    }
+  }).on('loaded', function (e) {
+    legLayer.addTo(map);
+  });
+}
+
 function loadRoute(routeFile, color = '#bb2100') {
     // Create the new route layer but don't add it to the map yet
     let newGPXLayer = new L.GPX(routeFile, {
         async: true, polyline_options: {
             color: color, opacity: 0.75, weight: 2
         }, marker_options: {
-            startIconUrl: 'resources/start.png', endIconUrl: 'resources/end.png', shadowUrl: 'resources/shadow.png'
+            startIconUrl: 'resources/start.png', endIconUrl: 'resources/shadow.png', shadowUrl: 'resources/shadow.png'
         }
     }).on('loaded', function (e) {
         // Once the new route is loaded, remove the old route
@@ -204,8 +247,7 @@ function initMap() {
         loadRoute(GPX_FILE2);
         loadAshRoute(GPX_FILE2a)
         setTimeout(() => {
-            loadRoute(GPX_FILE3);
-            loadAshRoute(GPX_FILE3a)
+            getLegs();
         }, 100);
     }, 100);
 
