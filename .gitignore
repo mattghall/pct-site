@@ -5,3 +5,4 @@
 .idea/prettier.xml
 .idea/jsLibraryMappings.xml
 .idea/jsLinters/jshint.xml
+.DS_Store
