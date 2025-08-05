@@ -367,10 +367,11 @@ async function renderStats() {
   }
 
   let html = `
+    <button id="addAllToMapBtn" class="btn btn-primary btn-sm mb-2">Add All to Map</button>
     <table class="table table-striped">
       <thead>
         <tr>
-          <th>File Name</th><th>Start</th><th>Duration</th>
+          <th></th><th>File Name</th><th>Start</th><th>Duration</th>
           <th>Distance</th><th># Laps</th>
           <th># Points Before</th><th># Points After</th>
         </tr>
@@ -382,6 +383,7 @@ async function renderStats() {
   rows.forEach(r => {
     html += `
       <tr>
+        <td><input type="checkbox" class="track-checkbox" data-path="${r.path}" /></td>
         <td><input type="text"
                    class="form-control filename-input"
                    data-path="${r.path}"
@@ -392,12 +394,6 @@ async function renderStats() {
         <td>${r.laps}</td>
         <td>${r.before}</td>
         <td>${r.after}</td>
-             <td>
-        <button class="btn btn-sm btn-primary map-btn"
-                data-path="${r.path}">
-          Map
-        </button>
-      </td>
       </tr>
     `;
   });
@@ -413,35 +409,55 @@ function extractLatLon(xmlText) {
 
   return Array.from(doc.getElementsByTagNameNS(ns, 'Trackpoint'))
     .map(tp => {
-      const lat = parseFloat(
-        tp.getElementsByTagNameNS(ns, 'LatitudeDegrees')[0].textContent
-      );
-      const lon = parseFloat(
-        tp.getElementsByTagNameNS(ns, 'LongitudeDegrees')[0].textContent
-      );
+      const latNode = tp.getElementsByTagNameNS(ns, 'LatitudeDegrees')[0];
+      const lonNode = tp.getElementsByTagNameNS(ns, 'LongitudeDegrees')[0];
+      if (!latNode || !lonNode) return null;
+      const lat = parseFloat(latNode.textContent);
+      const lon = parseFloat(lonNode.textContent);
       return [lat, lon];
-    });
+    })
+    .filter(pt => pt !== null);
 }
 
-// DOCUMENT READY //
-  let map = null;
-  let trackLayer = null;
-    let zipFileCache = null;
-  const originalTCX = {};
+ function exportGPX(doc, interval) {
+      const TCX_NS = 'http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2';
+      const gpxDoc = document.implementation.createDocument('', 'gpx');
+      const gpxRoot = gpxDoc.documentElement;
+      gpxRoot.setAttribute('version', '1.1');
+      gpxRoot.setAttribute('creator', 'PCT Site');
+      gpxRoot.setAttribute('xmlns', 'http://www.topografix.com/GPX/1/1');
+      const trk = gpxDoc.createElement('trk');
+      const trkseg = gpxDoc.createElement('trkseg');
+      const laps = Array.from(doc.getElementsByTagNameNS(TCX_NS, 'Lap'));
+      laps.forEach(lapEl => {
+        const pts = Array.from(lapEl.getElementsByTagNameNS(TCX_NS, 'Trackpoint'));
+        pts.forEach((pt, idx) => {
+          if (idx % interval !== 0) return;
+          const latNode = pt.getElementsByTagNameNS(TCX_NS, 'LatitudeDegrees')[0];
+          const lonNode = pt.getElementsByTagNameNS(TCX_NS, 'LongitudeDegrees')[0];
+          const eleNode = pt.getElementsByTagNameNS(TCX_NS, 'AltitudeMeters')[0];
+          const timeNode = pt.getElementsByTagNameNS(TCX_NS, 'Time')[0];
+          if (!latNode || !lonNode || !timeNode) return;
+          const trkpt = gpxDoc.createElement('trkpt');
+          trkpt.setAttribute('lat', latNode.textContent);
+          trkpt.setAttribute('lon', lonNode.textContent);
+          if (eleNode) {
+            const ele = gpxDoc.createElement('ele');
+            ele.textContent = eleNode.textContent;
+            trkpt.appendChild(ele);
+          }
+          const time = gpxDoc.createElement('time');
+          time.textContent = timeNode.textContent;
+          trkpt.appendChild(time);
+          trkseg.appendChild(trkpt);
+        });
+      });
+      trk.appendChild(trkseg);
+      gpxRoot.appendChild(trk);
+      return new XMLSerializer().serializeToString(gpxDoc);
+    }
 
-$(document).ready(function () {
-  // Export trimmed files as ZIP
-  $('#exportTrimmedBtn').on('click', async function () {
-    if (!zipFileCache) return;
-    const interval = getInterval();
-    const zip = new JSZip();
-    const entries = Object.values(zipFileCache.files)
-      .filter(e => e.name.endsWith('.tcx') && !e.dir && !e.name.includes('__MACOSX'));
-
-    for (let i = 0; i < entries.length; i++) {
-      const e = entries[i];
-      const txt = await e.async('text');
-      const doc = new DOMParser().parseFromString(txt, 'application/xml');
+    function exportTCX(doc, interval) {
       const TCX_NS = 'http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2';
       const laps = Array.from(doc.getElementsByTagNameNS(TCX_NS, 'Lap'));
       laps.forEach(lapEl => {
@@ -459,11 +475,86 @@ $(document).ready(function () {
           lapEl.appendChild(newTrack);
         }
       });
-      const xmlOut = new XMLSerializer().serializeToString(doc);
-      zip.file(e.name.replace(/\.tcx$/i, '_trimmed.tcx'), xmlOut);
+      return new XMLSerializer().serializeToString(doc);
+    }
+
+// DOCUMENT READY //
+  let map = null;
+  let trackLayer = null;
+    let zipFileCache = null;
+  const originalTCX = {};
+
+$(document).ready(function () {
+  // --- Removals summary toggle ---
+  const showRemovalsBtn = document.getElementById('showRemovalsBtn');
+  const previewDiv = document.getElementById('previewContainer');
+  if (showRemovalsBtn && previewDiv) {
+    showRemovalsBtn.addEventListener('click', () => {
+      if (previewDiv.style.display === 'none' || previewDiv.style.display === '') {
+        previewDiv.style.display = 'block';
+        showRemovalsBtn.textContent = 'Hide Removals Per File';
+      } else {
+        previewDiv.style.display = 'none';
+        showRemovalsBtn.textContent = 'Show Removals Per File';
+      }
+    });
+  }
+
+  // --- Map selection checkboxes and add-all button ---
+  $('#output').on('change', '.track-checkbox', async function () {
+    compareLayer.clearLayers();
+    const checked = $('.track-checkbox:checked');
+    let allBounds = null;
+    for (let i = 0; i < checked.length; i++) {
+      const path = $(checked[i]).data('path');
+      const rawXml = originalTCX[path];
+      const rawPts = extractLatLon(rawXml);
+      const interval = getInterval();
+      const filteredPts = rawPts.filter((_, idx) => idx % interval === 0);
+      const rawLine = L.polyline(rawPts, { color: 'blue', weight: 3 });
+      const filteredLine = L.polyline(filteredPts, { color: 'orange', weight: 3 });
+      rawLine.addTo(compareLayer);
+      filteredLine.addTo(compareLayer);
+      if (!allBounds && rawPts.length) {
+        allBounds = L.latLngBounds(rawPts);
+      } else if (rawPts.length) {
+        allBounds.extend(L.latLngBounds(rawPts));
+      }
+    }
+    if (allBounds && map) {
+      map.fitBounds(allBounds.pad(0.1));
+    }
+  });
+
+  $('#output').on('click', '#addAllToMapBtn', async function () {
+    $('.track-checkbox').prop('checked', true).trigger('change');
+  });
+  
+  // Export trimmed files as ZIP
+  $('#exportTrimmedBtn').on('click', async function () {
+    if (!zipFileCache) return;
+    const interval = getInterval();
+    const format = $('#outputFormat').val(); // selector: 'tcx' or 'gpx'
+    const zip = new JSZip();
+    const entries = Object.values(zipFileCache.files)
+      .filter(e => e.name.endsWith('.tcx') && !e.dir && !e.name.includes('__MACOSX'));
+
+    for (let i = 0; i < entries.length; i++) {
+      const e = entries[i];
+      const txt = await e.async('text');
+      const doc = new DOMParser().parseFromString(txt, 'application/xml');
+      const TCX_NS = 'http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2';
+      if (format === 'gpx') {
+        zip.file(e.name.replace(/\.tcx$/i, '_trimmed.gpx'), exportGPX(doc, interval));
+      } else {
+        zip.file(e.name.replace(/\.tcx$/i, '_trimmed.tcx'), exportTCX(doc, interval));
+      }
     }
     const blob = await zip.generateAsync({ type: 'blob' });
-    downloadBlob(blob, 'trimmed_files.zip');
+    downloadBlob(blob, format === 'gpx' ? 'trimmed_files_gpx.zip' : 'trimmed_files.zip');
+
+    // --- Helper functions ---
+   
   });
   initMap();
 
