@@ -6,3 +6,5 @@
 .idea/jsLibraryMappings.xml
 .idea/jsLinters/jshint.xml
 .DS_Store
+/ecs/node_modules
+/tracks

@@ -20,43 +20,65 @@ function displayTracksOnMap() {
   trackLayer = L.layerGroup().addTo(map);
   const allCoords = [];
 
-  Object.values(zipFileCache.files).forEach(async (entry, index) => {
-    if (entry.dir || !entry.name.toLowerCase().endsWith('.tcx') || entry.name.includes('__MACOSX')) return;
+  (async () => {
+    const entries = Object.values(zipFileCache.files);
+    for (let index = 0; index < entries.length; index++) {
+      const entry = entries[index];
+      if (entry.dir || (!entry.name.toLowerCase().endsWith('.tcx') && !entry.name.toLowerCase().endsWith('.gpx')) || entry.name.includes('__MACOSX')) continue;
 
-    try {
-      const txt = await entry.async('text');
-      const doc = new DOMParser().parseFromString(txt, 'application/xml');
-      const trackpoints = Array.from(doc.getElementsByTagNameNS(TCX_NS, 'Trackpoint'));
-
-      const coords = [];
-      trackpoints.forEach(pt => {
-        const latNode = pt.getElementsByTagNameNS(TCX_NS, 'LatitudeDegrees')[0];
-        const lonNode = pt.getElementsByTagNameNS(TCX_NS, 'LongitudeDegrees')[0];
-        if (latNode && lonNode) {
-          const lat = parseFloat(latNode.textContent);
-          const lon = parseFloat(lonNode.textContent);
-          coords.push([lat, lon]);
-          allCoords.push([lat, lon]);
+      try {
+        const txt = await entry.async('text');
+        const doc = new DOMParser().parseFromString(txt, 'application/xml');
+        let coords = [];
+        if (entry.name.toLowerCase().endsWith('.tcx')) {
+          const TCX_NS = 'http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2';
+          const trackpoints = Array.from(doc.getElementsByTagNameNS(TCX_NS, 'Trackpoint'));
+          trackpoints.forEach(pt => {
+            const latNode = pt.getElementsByTagNameNS(TCX_NS, 'LatitudeDegrees')[0];
+            const lonNode = pt.getElementsByTagNameNS(TCX_NS, 'LongitudeDegrees')[0];
+            if (latNode && lonNode) {
+              const lat = parseFloat(latNode.textContent);
+              const lon = parseFloat(lonNode.textContent);
+              coords.push([lat, lon]);
+              allCoords.push([lat, lon]);
+            }
+          });
+        } else if (entry.name.toLowerCase().endsWith('.gpx')) {
+          // GPX: <trk><trkseg><trkpt lat="" lon="" ...>
+          const trkpts = Array.from(doc.getElementsByTagName('trkpt'));
+          trkpts.forEach(pt => {
+            const lat = parseFloat(pt.getAttribute('lat'));
+            const lon = parseFloat(pt.getAttribute('lon'));
+            if (!isNaN(lat) && !isNaN(lon)) {
+              coords.push([lat, lon]);
+              allCoords.push([lat, lon]);
+            }
+          });
         }
-      });
 
-      if (coords.length > 0) {
-        // Create different colors for different tracks
-        const colors = ['red', 'blue', 'green', 'orange', 'purple', 'darkred', 'lightred', 'beige', 'darkblue', 'darkgreen'];
-        const color = colors[index % colors.length];
+        if (coords.length > 0) {
+          // Create different colors for different tracks
+          const colors = ['red', 'blue', 'green', 'orange', 'purple', 'darkred', 'lightred', 'beige', 'darkblue', 'darkgreen'];
+          const color = colors[index % colors.length];
 
-        const polyline = L.polyline(coords, {
-          color: color,
-          weight: 3,
-          opacity: 0.8
-        }).addTo(trackLayer);
+          const polyline = L.polyline(coords, {
+            color: color,
+            weight: 3,
+            opacity: 0.8
+          }).addTo(trackLayer);
 
-        polyline.bindPopup(`Track: ${entry.name}<br>Points: ${coords.length}`);
+          polyline.bindPopup(`Track: ${entry.name}<br>Points: ${coords.length}`);
+        }
+      } catch (error) {
+        console.warn(`Error processing ${entry.name} for map display:`, error);
       }
-    } catch (error) {
-      console.warn(`Error processing ${entry.name} for map display:`, error);
     }
-  });
+    // Fit map to show all tracks
+    if (allCoords.length > 0) {
+      const bounds = L.latLngBounds(allCoords);
+      map.fitBounds(bounds, { padding: [10, 10] });
+    }
+  })();
 
   // Fit map to show all tracks
   if (allCoords.length > 0) {
@@ -261,6 +283,41 @@ async function cleanFiles() {
 }
 
 async function renderStats() {
+  // GPX helpers
+  function extractGPXMeta(doc, interval) {
+    // GPX: <trk><trkseg><trkpt lat="" lon=""><ele></ele><time></time></trkpt>...</trkseg></trk>
+    const trksegs = Array.from(doc.getElementsByTagName('trkseg'));
+    let before = 0, after = 0, start = '—', totalD = 0, totalT = 0;
+    let laps = trksegs.length;
+    let firstTime = null, lastTime = null;
+    let prevLat = null, prevLon = null;
+    trksegs.forEach(seg => {
+      const pts = Array.from(seg.getElementsByTagName('trkpt'));
+      before += pts.length;
+      after += Math.ceil(pts.length / interval);
+      pts.forEach((pt, idx) => {
+        const lat = parseFloat(pt.getAttribute('lat'));
+        const lon = parseFloat(pt.getAttribute('lon'));
+        const timeNode = pt.getElementsByTagName('time')[0];
+        if (timeNode) {
+          const t = new Date(timeNode.textContent.trim());
+          if (!firstTime || t < firstTime) firstTime = t;
+          if (!lastTime || t > lastTime) lastTime = t;
+        }
+        if (prevLat !== null && prevLon !== null) {
+          // Use haversineDist from above
+          totalD += haversineDist(prevLat, prevLon, lat, lon);
+        }
+        prevLat = lat;
+        prevLon = lon;
+      });
+    });
+    if (firstTime && lastTime) {
+      totalT = (lastTime - firstTime) / 1000;
+      start = firstTime.toISOString();
+    }
+    return { laps, start, totalT, totalD, before, after };
+  }
   if (!zipFileCache) return;
   const interval = getInterval();
   const rows = [];
@@ -307,7 +364,8 @@ async function renderStats() {
 
   for (const path in zipFileCache.files) {
     const entry = zipFileCache.files[path];
-    if (entry.dir || !/\.tcx$/i.test(path) || path.includes('__MACOSX')) continue;
+    if (entry.dir || path.includes('__MACOSX')) continue;
+    if (!/\.tcx$/i.test(path) && !/\.gpx$/i.test(path)) continue;
 
     const txt = await entry.async('text');
     if (!txt.trim()) {
@@ -320,34 +378,39 @@ async function renderStats() {
     console.log(`Parsed ${path}, root=<${root.nodeName}> ns=${root.namespaceURI}`);
 
     let meta;
-    if (
-      root.namespaceURI === HTML_NS ||
-      root.nodeName === 'parsererror' ||
-      doc.getElementsByTagName('parsererror').length > 0
-    ) {
-      meta = regexExtract(txt, path);
+    if (/\.tcx$/i.test(path)) {
+      if (
+        root.namespaceURI === HTML_NS ||
+        root.nodeName === 'parsererror' ||
+        doc.getElementsByTagName('parsererror').length > 0
+      ) {
+        meta = regexExtract(txt, path);
+      } else {
+        const laps = [...doc.getElementsByTagNameNS(TCX_NS, 'Lap')];
+        const tPts = [...doc.getElementsByTagNameNS(TCX_NS, 'Trackpoint')];
+        let totalT = 0, totalD = 0, start = '—';
+        laps.forEach((lap, i) => {
+          const st = lap.getAttribute('StartTime');
+          const t = parseFloat(lap.getElementsByTagNameNS(TCX_NS, 'TotalTimeSeconds')[0]?.textContent || 0);
+          const d = parseFloat(lap.getElementsByTagNameNS(TCX_NS, 'DistanceMeters')[0]?.textContent || 0);
+          if (i === 0 && st) start = st;
+          totalT += t;
+          totalD += d;
+        });
+        meta = {
+          laps: laps.length,
+          start,
+          totalT,
+          totalD,
+          before: tPts.length,
+          after: Math.ceil(tPts.length / interval)
+        };
+      }
+    } else if (/\.gpx$/i.test(path)) {
+      // GPX logic
+      meta = extractGPXMeta(doc, interval);
     } else {
-      const laps = [...doc.getElementsByTagNameNS(TCX_NS, 'Lap')];
-      const tPts = [...doc.getElementsByTagNameNS(TCX_NS, 'Trackpoint')];
-      let totalT = 0, totalD = 0, start = '—';
-
-      laps.forEach((lap, i) => {
-        const st = lap.getAttribute('StartTime');
-        const t = parseFloat(lap.getElementsByTagNameNS(TCX_NS, 'TotalTimeSeconds')[0]?.textContent || 0);
-        const d = parseFloat(lap.getElementsByTagNameNS(TCX_NS, 'DistanceMeters')[0]?.textContent || 0);
-        if (i === 0 && st) start = st;
-        totalT += t;
-        totalD += d;
-      });
-
-      meta = {
-        laps: laps.length,
-        start,
-        totalT,
-        totalD,
-        before: tPts.length,
-        after: Math.ceil(tPts.length / interval)
-      };
+      continue;
     }
 
     rows.push({
@@ -362,7 +425,7 @@ async function renderStats() {
   }
 
   if (!rows.length) {
-    $('#output').text('No valid TCX files found.');
+    $('#output').text('No valid TCX/GPX files found.');
     return;
   }
 
@@ -417,6 +480,30 @@ function extractLatLon(xmlText) {
       return [lat, lon];
     })
     .filter(pt => pt !== null);
+}
+function extractLatLon(xmlText, fileType = 'tcx') {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xmlText, 'application/xml');
+  if (fileType === 'gpx') {
+    const pts = Array.from(doc.getElementsByTagName('trkpt'));
+    return pts.map(pt => {
+      const lat = parseFloat(pt.getAttribute('lat'));
+      const lon = parseFloat(pt.getAttribute('lon'));
+      return [lat, lon];
+    }).filter(pt => pt.every(v => !isNaN(v)));
+  } else {
+    const ns = 'http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2';
+    return Array.from(doc.getElementsByTagNameNS(ns, 'Trackpoint'))
+      .map(tp => {
+        const latNode = tp.getElementsByTagNameNS(ns, 'LatitudeDegrees')[0];
+        const lonNode = tp.getElementsByTagNameNS(ns, 'LongitudeDegrees')[0];
+        if (!latNode || !lonNode) return null;
+        const lat = parseFloat(latNode.textContent);
+        const lon = parseFloat(lonNode.textContent);
+        return [lat, lon];
+      })
+      .filter(pt => pt !== null);
+  }
 }
 
  function exportGPX(doc, interval) {
@@ -525,6 +612,31 @@ $(document).ready(function () {
       map.fitBounds(allBounds.pad(0.1));
     }
   });
+  $('#output').on('change', '.track-checkbox', async function () {
+    compareLayer.clearLayers();
+    const checked = $('.track-checkbox:checked');
+    let allBounds = null;
+    for (let i = 0; i < checked.length; i++) {
+      const path = $(checked[i]).data('path');
+      const rawXml = originalTCX[path];
+      const fileType = path.toLowerCase().endsWith('.gpx') ? 'gpx' : 'tcx';
+      const rawPts = extractLatLon(rawXml, fileType);
+      const interval = getInterval();
+      const filteredPts = rawPts.filter((_, idx) => idx % interval === 0);
+      const rawLine = L.polyline(rawPts, { color: 'blue', weight: 3 });
+      const filteredLine = L.polyline(filteredPts, { color: 'orange', weight: 3 });
+      rawLine.addTo(compareLayer);
+      filteredLine.addTo(compareLayer);
+      if (!allBounds && rawPts.length) {
+        allBounds = L.latLngBounds(rawPts);
+      } else if (rawPts.length) {
+        allBounds.extend(L.latLngBounds(rawPts));
+      }
+    }
+    if (allBounds && map) {
+      map.fitBounds(allBounds.pad(0.1));
+    }
+  });
 
   $('#output').on('click', '#addAllToMapBtn', async function () {
     $('.track-checkbox').prop('checked', true).trigger('change');
@@ -537,21 +649,62 @@ $(document).ready(function () {
     const format = $('#outputFormat').val(); // selector: 'tcx' or 'gpx'
     const zip = new JSZip();
     const entries = Object.values(zipFileCache.files)
-      .filter(e => e.name.endsWith('.tcx') && !e.dir && !e.name.includes('__MACOSX'));
+      .filter(e => (e.name.endsWith('.tcx') || e.name.endsWith('.gpx')) && !e.dir && !e.name.includes('__MACOSX'));
 
     for (let i = 0; i < entries.length; i++) {
       const e = entries[i];
       const txt = await e.async('text');
       const doc = new DOMParser().parseFromString(txt, 'application/xml');
       const TCX_NS = 'http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2';
-      if (format === 'gpx') {
-        zip.file(e.name.replace(/\.tcx$/i, '_trimmed.gpx'), exportGPX(doc, interval));
-      } else {
-        zip.file(e.name.replace(/\.tcx$/i, '_trimmed.tcx'), exportTCX(doc, interval));
+      if (e.name.endsWith('.tcx')) {
+        if (format === 'gpx') {
+          zip.file(e.name.replace(/\.tcx$/i, '_trimmed.gpx'), exportGPX(doc, interval));
+        } else {
+          zip.file(e.name.replace(/\.tcx$/i, '_trimmed.tcx'), exportTCX(doc, interval));
+        }
+      } else if (e.name.endsWith('.gpx')) {
+        // For GPX files, just trim points by interval and re-export as GPX
+        zip.file(e.name.replace(/\.gpx$/i, '_trimmed.gpx'), trimGPX(doc, interval));
       }
     }
     const blob = await zip.generateAsync({ type: 'blob' });
     downloadBlob(blob, format === 'gpx' ? 'trimmed_files_gpx.zip' : 'trimmed_files.zip');
+
+    // Helper for GPX trimming
+    function trimGPX(doc, interval) {
+      // GPX: <gpx><trk><trkseg><trkpt/></trkseg></trk></gpx>
+      const gpxDoc = document.implementation.createDocument('', 'gpx');
+      const gpxRoot = gpxDoc.documentElement;
+      // Copy attributes from original root
+      const origRoot = doc.documentElement;
+      for (let i = 0; i < origRoot.attributes.length; i++) {
+        const attr = origRoot.attributes[i];
+        gpxRoot.setAttribute(attr.name, attr.value);
+      }
+      const trks = Array.from(doc.getElementsByTagName('trk'));
+      trks.forEach(trk => {
+        const newTrk = gpxDoc.createElement('trk');
+        // Copy trk name, etc.
+        Array.from(trk.childNodes).forEach(child => {
+          if (child.nodeType === 1 && child.nodeName !== 'trkseg') {
+            newTrk.appendChild(gpxDoc.importNode(child, true));
+          }
+        });
+        const trksegs = Array.from(trk.getElementsByTagName('trkseg'));
+        trksegs.forEach(seg => {
+          const newSeg = gpxDoc.createElement('trkseg');
+          const pts = Array.from(seg.getElementsByTagName('trkpt'));
+          pts.forEach((pt, idx) => {
+            if (idx % interval === 0) {
+              newSeg.appendChild(gpxDoc.importNode(pt, true));
+            }
+          });
+          newTrk.appendChild(newSeg);
+        });
+        gpxRoot.appendChild(newTrk);
+      });
+      return new XMLSerializer().serializeToString(gpxDoc);
+    }
 
     // --- Helper functions ---
    
@@ -690,6 +843,21 @@ $(document).ready(function () {
     filteredLine.addTo(compareLayer);
 
     // Fit map to show both lines
+    const group = L.featureGroup([rawLine, filteredLine]);
+    map.fitBounds(group.getBounds().pad(0.1));
+  });
+  $('#output').on('click', '.map-btn', async function () {
+    const path = $(this).data('path');
+    const rawXml = originalTCX[path];
+    const fileType = path.toLowerCase().endsWith('.gpx') ? 'gpx' : 'tcx';
+    const rawPts = extractLatLon(rawXml, fileType);
+    const interval = getInterval();
+    const filteredPts = rawPts.filter((_, idx) => idx % interval === 0);
+    compareLayer.clearLayers();
+    const rawLine = L.polyline(rawPts, { color: 'blue', weight: 3 });
+    const filteredLine = L.polyline(filteredPts, { color: 'orange', weight: 3 });
+    rawLine.addTo(compareLayer);
+    filteredLine.addTo(compareLayer);
     const group = L.featureGroup([rawLine, filteredLine]);
     map.fitBounds(group.getBounds().pad(0.1));
   });

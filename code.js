@@ -15,20 +15,26 @@ const markerClusterGroup = L.markerClusterGroup({
     chunkedLoading: true
 });
 
+const markerOptions = {
+        startIconUrl: null,
+        endIconUrl: null,
+        shadowUrl: null,
+        wptIconUrls: {},
+        marker: function() { return null; },
+        startMarker: function() { return null; },
+        endMarker: function() { return null; },
+        wptMarker: function() { return null; }
+};
+
 const BLOG_POST_FILE = 'resources/blog_posts.json';
 const IMAGES_FILE = 'resources/images.json';
-const GPX_FILE1 = "resources/pct_tiny.gpx";
-const GPX_FILE2 = "resources/pct_small.gpx";
-const GPX_FILE3 = "resources/pct_cleaned.gpx";
-const GPX_FILE1a = "resources/Toashsm.gpx";
-const GPX_FILE2a = "resources/Toashmed.gpx";
-const GPX_FILE3a = "resources/Toashbig.gpx";
+
+const GPX_FILE1 = 'resources/gpx/pct_tiny.gpx';
+const GPX_FILE2 = 'resources/gpx/pct_small.gpx';
 
 var map;
 let currentGPXLayer = null;
-let currentAshGPXLayer = null;
 let mainBounds = null;
-let ashBounds = null;
 
 $(function () {
     feather.replace();
@@ -46,21 +52,21 @@ $(function () {
 });
 
 const defaultIcon = L.icon({
-    iconUrl: 'resources/camera-gray.svg',
+    iconUrl: 'resources/img/camera-gray.svg',
     iconSize: [25, 25],
     iconAnchor: [12.5, 12.5],
     popupAnchor: [0, -12.5]
 });
 
 const selectedIcon = L.icon({
-    iconUrl: 'resources/camera-blue.svg', // Path to your selected icon
+    iconUrl: 'resources/img/camera-blue.svg', // Path to your selected icon
     iconSize: [25, 25],
     iconAnchor: [12.5, 12.5],
     popupAnchor: [0, -12.5]
 })
 
 const hoverIcon = L.icon({
-    iconUrl: 'resources/camera-orange.svg', // Path to your selected icon
+    iconUrl: 'resources/img/camera-orange.svg', // Path to your selected icon
     iconSize: [25, 25],
     iconAnchor: [12.5, 12.5],
     popupAnchor: [0, -12.5]
@@ -119,7 +125,6 @@ function unhoverMarker(marker, image) {
     }
 }
 
-
 function initMapWithImages() {
     for (var image of allImages) {
         addPhotoToMap(image);
@@ -143,92 +148,92 @@ function setIntroImageHeight() {
     $('.introImg').css('height', textHeight + 15 + 'px');
 }
 
-async function getLegs() {
-  try {
-    const response = await fetch('https://34vkzcqff9.execute-api.us-west-2.amazonaws.com/');
-    const data = await response.json();
-
-    const legs = data['gpx-legs'] || [];
-
-    legs.forEach((legGpx) => {
-      loadLeg(legGpx);
+async function getLegs(size) {
+    let fileName = '';
+    switch (size) {
+        case 'small':
+            fileName = 'gpxSmall.zip';
+            break;
+        case 'medium':
+            fileName = 'gpxMedium.zip';
+            break;
+        case 'full':
+            fileName = 'gpxFull.zip';
+            break;
+        default:
+            console.error('Invalid size parameter');
+            return;
+    }
+    fileName = `tracks/zipped/${fileName}`;
+    // 1. Download the ZIP file
+    fetch(fileName)
+    .then(response => response.arrayBuffer())
+    .then(buffer => {
+        // 2. Unzip using JSZip
+        JSZip.loadAsync(buffer).then(zip => {
+            // List files in the ZIP
+            Object.keys(zip.files).forEach(filename => {
+                // Only process .gpx files
+                if (filename.toLowerCase().endsWith('.gpx')) {
+                    zip.files[filename].async('string').then(content => {
+                        loadLeg(content); // Pass GPX XML string
+                    });
+                }
+            });
+        });
     });
-  } catch (error) {
-    console.error('Error fetching legs:', error);
-  }
 }
 
-let colors = Array.from({ length: 100 }, (_, i) => {
-  const hue = Math.round((i / 100) * 360);
-  return `hsl(${hue}, 70%, 50%)`;
-});
+
+// Alternate between three dark shades of red and orange for better visibility
+let colors = [
+  '#8B0000', // Dark Red
+  '#FF8C00', // Dark Orange
+  '#BB2100'  // Deep Red-Orange
+];
 
 let legColorIndex = 0;
 
-function loadLeg(legGpx) {
+function loadLeg(gpxContent) {
   const color = colors[legColorIndex % colors.length];
   legColorIndex++;
 
-  let legLayer = new L.GPX(legGpx, {
+  // Parse GPX XML string as a Blob and use as a file for L.GPX
+  const gpxBlob = new Blob([gpxContent], { type: 'application/gpx+xml' });
+  const gpxUrl = URL.createObjectURL(gpxBlob);
+
+  let legLayer = new L.GPX(gpxUrl, {
     async: true,
     polyline_options: {
       color: color,
-      opacity: 0.75,
-      weight: 2
+      opacity: 1,
+      weight: 4
     },
-    marker_options: {
-      startIconUrl: 'resources/shadow.png',
-      endIconUrl: 'resources/shadow.png',
-      shadowUrl: 'resources/shadow.png'
-    }
+    marker_options: markerOptions,
   }).on('loaded', function (e) {
     legLayer.addTo(map);
+    // Release the object URL after loading
+    URL.revokeObjectURL(gpxUrl);
   });
 }
 
-function loadRoute(routeFile, color = '#bb2100') {
+function loadRoute(routeFile, color = '#BB2100') {
     // Create the new route layer but don't add it to the map yet
     let newGPXLayer = new L.GPX(routeFile, {
-        async: true, polyline_options: {
-            color: color, opacity: 0.75, weight: 2
-        }, marker_options: {
-            startIconUrl: 'resources/start.png', endIconUrl: 'resources/shadow.png', shadowUrl: 'resources/shadow.png'
-        }
+        async: true,
+        polyline_options: {
+            color: color, opacity: 1, weight: 6
+        }, marker_options: markerOptions,
     }).on('loaded', function (e) {
         // Once the new route is loaded, remove the old route
         if (currentGPXLayer) {
             map.removeLayer(currentGPXLayer);
         }
         currentGPXLayer = newGPXLayer;
-
         newGPXLayer.addTo(map);
         mainBounds = e.target.getBounds();
         if (routeFile === GPX_FILE1) {       
             map.fitBounds(mainBounds);
-        }
-    });
-}
-
-function loadAshRoute(routeFile, color = '#bb2100') {
-    // Create the new route layer but don't add it to the map yet
-    let newGPXLayer = new L.GPX(routeFile, {
-        async: true, polyline_options: {
-            color: color, opacity: 0.75, weight: 2
-        }, marker_options: {
-            startIconUrl: 'resources/start.png', endIconUrl: 'resources/end.png', shadowUrl: 'resources/shadow.png'
-        }
-    }).on('loaded', function (e) {
-        // Once the new route is loaded, remove the old route
-        if (currentAshGPXLayer) {
-            map.removeLayer(currentAshGPXLayer);
-        }
-        currentAshGPXLayer = newGPXLayer;
-
-        newGPXLayer.addTo(map);
-        ashBounds = e.target.getBounds()
-        if (routeFile === GPX_FILE1a && mainBounds && ashBounds) {       
-            const combinedBounds = mainBounds.extend(ashBounds);
-            map.fitBounds(combinedBounds);;
         }
     });
 }
@@ -242,13 +247,15 @@ function initMap() {
 
     // Load and display the GPX track
     loadRoute(GPX_FILE1);
-    loadAshRoute(GPX_FILE1a);
     setTimeout(() => {
         loadRoute(GPX_FILE2);
-        loadAshRoute(GPX_FILE2a)
-        setTimeout(() => {
-            getLegs();
-        }, 100);
+        getLegs('small');
+        // setTimeout(() => {
+        //     getLegs('medium');
+        //     setTimeout(() => {
+        //         getLegs('full');
+        //     }, 100);
+        // }, 100);
     }, 100);
 
     map.addLayer(markerClusterGroup);
