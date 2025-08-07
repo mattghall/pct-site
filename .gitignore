@@ -8,3 +8,4 @@
 .DS_Store
 /ecs/node_modules
 /tracks
+/lambda/node_modules
