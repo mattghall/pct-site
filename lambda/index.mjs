@@ -41,6 +41,14 @@ export const handler = async () => {
   const grouped = {};
 
   for (const entry of entries) {
+    // Only process posts from 2025
+    let published = '';
+    if (entry.published && entry.published.$t) {
+      published = entry.published.$t;
+    }
+    if (!published.startsWith('2025')) {
+      continue;
+    }
     // Always start with a default post
     let post = {
       title: 'PCT Update',
@@ -49,10 +57,7 @@ export const handler = async () => {
     };
     try {
       // Try to extract datetime
-      let datetime = '';
-      if (entry.published && entry.published.$t) {
-        datetime = entry.published.$t;
-      }
+      let datetime = published;
       if (datetime) post.datetime = datetime;
 
       // Try to extract body
@@ -75,13 +80,36 @@ export const handler = async () => {
         body = body.replace(/<[^>]+>/g, '');
       }
       body = body.trim();
-      if (body) post.body = body;
 
       // Try to extract title
       let title = '';
       if (entry.title && typeof entry.title.$t === 'string') {
         title = entry.title.$t;
       }
+
+      // Special handling for inReach messages
+      if (title === 'inReach message from Matthew Hall') {
+        // Use PCT Day 3-* logic for title
+        let dateNum = 0;
+        if (post.datetime) {
+          const pacificDate = getPacificDate(post.datetime);
+          const y = pacificDate.getUTCFullYear();
+          const m = pacificDate.getUTCMonth() + 1;
+          const d = pacificDate.getUTCDate();
+          dateNum = Number(`${y}${String(m).padStart(2, '0')}${String(d).padStart(2, '0')}`);
+          if (dateNum >= 20250810 && dateNum <= 20250901) {
+            title = `PCT Day 3-${getPCTDayNumber(pacificDate)}`;
+          } else {
+            title = 'PCT Update';
+          }
+        }
+        // Remove everything after 'View the location or send a reply to Matthew Hall'
+        const cutIdx = body.indexOf('View the location or send a reply to Matthew Hall');
+        if (cutIdx !== -1) {
+          body = body.substring(0, cutIdx).trim();
+        }
+      }
+
       // Fallback title logic: apply if title is empty string or falsy
       let dateNum = 0;
       if (post.datetime) {
@@ -100,6 +128,7 @@ export const handler = async () => {
           }
         }
       }
+      if (body) post.body = body;
       if (title) post.title = title;
     } catch (err) {
       // If anything fails, keep the default post

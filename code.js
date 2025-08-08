@@ -27,6 +27,7 @@ const markerOptions = {
 };
 
 const BLOG_POST_FILE = 'resources/blog_posts.json';
+const BLOG_POST_OLD_FILE = 'resources/blog_posts_old.json';
 const IMAGES_FILE = 'resources/images.json';
 
 const GPX_FILE1 = 'resources/gpx/pct_tiny.gpx';
@@ -428,19 +429,39 @@ function buildBlogPostDiv(postElement, post, i) {
             `;
 }
 
+function loadBlogPosts() {
+    fetch(BLOG_POST_FILE)
+        .then(response => response.json())
+        .then(posts => {
+            appendPosts(posts);
+        });
+}
+
+function loadOldBlogPosts() {
+    fetch(BLOG_POST_OLD_FILE)
+        .then(response => response.json())
+        .then(posts => {
+            appendPosts(posts);
+        });
+}
+
 function initBlog() {
     const container = document.getElementById('blog-posts');
     let currentPostIndex = 0;
     const postsPerPage = 5;
+    let allPosts = [];
+    let loadingOld = false;
+    let oldPosts = [];
 
-    function loadBlogPosts() {
-        // Assuming the JSON file is served from your server
-        fetch(BLOG_POST_FILE)
-            .then(response => response.json())
-            .then(posts => {
-                appendPosts(posts);
-            });
-    }
+    // Create and append the Load More button
+    const loadMoreBtn = document.createElement('button');
+    loadMoreBtn.textContent = 'Load More';
+    loadMoreBtn.id = 'load-more-posts-btn';
+    loadMoreBtn.style.display = 'block';
+    loadMoreBtn.style.margin = '2em auto';
+    loadMoreBtn.style.padding = '1em 2em';
+    loadMoreBtn.style.fontSize = '1.2em';
+    container.after(loadMoreBtn);
 
     function appendPosts(posts) {
         for (let i = currentPostIndex; i < currentPostIndex + postsPerPage && i < posts.length; i++) {
@@ -451,17 +472,40 @@ function initBlog() {
             container.appendChild(postElement);
         }
         currentPostIndex += postsPerPage;
-    }
 
-    function isNearBottom() {
-        return window.innerHeight + window.scrollY >= document.body.offsetHeight - 100;
-    }
-
-    window.addEventListener('scroll', function () {
-        if (isNearBottom()) {
-            loadBlogPosts();
+        // If we've loaded all posts from the current file, try to load old posts
+        if (currentPostIndex >= posts.length && !loadingOld) {
+            loadingOld = true;
+            fetch(BLOG_POST_OLD_FILE)
+                .then(response => response.json())
+                .then(posts => {
+                    oldPosts = posts;
+                    currentPostIndex = 0;
+                    allPosts = oldPosts;
+                    // If there are old posts, show the button again
+                    if (oldPosts.length > 0) {
+                        loadMoreBtn.style.display = 'block';
+                    } else {
+                        loadMoreBtn.style.display = 'none';
+                    }
+                });
+        } else if (currentPostIndex >= posts.length && loadingOld) {
+            // No more posts to load
+            loadMoreBtn.style.display = 'none';
         }
-    });
+    }
+
+    function loadMorePosts() {
+        appendPosts(allPosts);
+    }
+
+    loadMoreBtn.addEventListener('click', loadMorePosts);
+
     // Initial load
-    loadBlogPosts();
+    fetch(BLOG_POST_FILE)
+        .then(response => response.json())
+        .then(posts => {
+            allPosts = posts;
+            appendPosts(allPosts);
+        });
 }
