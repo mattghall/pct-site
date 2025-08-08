@@ -41,20 +41,16 @@ export const handler = async () => {
   const grouped = {};
 
   for (const entry of entries) {
-    // Only process posts from 2025
-    let published = '';
-    if (entry.published && entry.published.$t) {
-      published = entry.published.$t;
-    }
-    if (!published.startsWith('2025')) {
-      continue;
-    }
     // Always start with a default post
     let post = {
       title: 'PCT Update',
       body: 'New Post',
       datetime: new Date().toISOString()
     };
+    let published = '';
+    if (entry.published && entry.published.$t) {
+      published = entry.published.$t;
+    }
     try {
       // Try to extract datetime
       let datetime = published;
@@ -134,7 +130,10 @@ export const handler = async () => {
       // If anything fails, keep the default post
       console.warn('Failed to extract post, using default:', err);
     }
-    newPosts.push(post);
+    // Only include posts where the datetime is in 2025
+    if (post.datetime && /^2025/.test(post.datetime)) {
+      newPosts.push(post);
+    }
   }
 
   // Combine grouped posts
