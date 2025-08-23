@@ -30,8 +30,7 @@ const BLOG_POST_FILE = 'resources/blog_posts.json';
 const BLOG_POST_OLD_FILE = 'resources/blog_posts_old.json';
 const IMAGES_FILE = 'resources/images.json';
 
-const GPX_FILE1 = 'resources/gpx/pct_tiny.gpx';
-const GPX_FILE2 = 'resources/gpx/pct_small.gpx';
+const GPX_COMBINED_ZIP = 'tracks/combined/combined-small.zip';
 
 var map;
 let currentGPXLayer = null;
@@ -138,7 +137,7 @@ function initImages() {
         .then(images => {
             allImages = images;
             initMapWithImages();
-            loadMoreImages(); // Load the first set of images
+            // loadMoreImages(); // Removed automatic loading - images now load only manually
             setTimeout(document.getElementById('loadMore').style.display = 'flex', 3000);
         })
         .catch(error => console.error('Error loading images:', error));
@@ -218,6 +217,75 @@ function loadLeg(gpxContent) {
   });
 }
 
+function loadCombinedRoute(zipFile, onLoadCallback, color = '#BB2100') {
+    // Download and extract the combined route zip file
+    fetch(zipFile)
+    .then(response => response.arrayBuffer())
+    .then(buffer => {
+        // Unzip using JSZip
+        JSZip.loadAsync(buffer).then(zip => {
+            // Find the GPX file in the zip
+            const gpxFileName = Object.keys(zip.files).find(filename => 
+                filename.toLowerCase().endsWith('.gpx')
+            );
+            
+            if (gpxFileName) {
+                zip.files[gpxFileName].async('string').then(gpxContent => {
+                    // Create a blob URL for the GPX content
+                    const gpxBlob = new Blob([gpxContent], { type: 'application/gpx+xml' });
+                    const gpxUrl = URL.createObjectURL(gpxBlob);
+                    
+                    // Load the GPX using Leaflet
+                    let combinedGPXLayer = new L.GPX(gpxUrl, {
+                        async: true,
+                        polyline_options: {
+                            color: color, opacity: 1, weight: 6
+                        }, marker_options: markerOptions,
+                    }).on('loaded', function (e) {
+                        // Set as current GPX layer
+                        if (currentGPXLayer) {
+                            map.removeLayer(currentGPXLayer);
+                        }
+                        currentGPXLayer = combinedGPXLayer;
+                        combinedGPXLayer.addTo(map);
+                        mainBounds = e.target.getBounds();
+                        map.fitBounds(mainBounds);
+                        
+                        console.log('Combined route loaded from zip, now loading individual legs...');
+                        
+                        // Clean up the blob URL
+                        URL.revokeObjectURL(gpxUrl);
+                        
+                        // Call the callback to load individual legs
+                        if (onLoadCallback) {
+                            onLoadCallback();
+                        }
+                    }).on('error', function(e) {
+                        console.error('Error loading combined route from zip:', e);
+                        // Clean up the blob URL
+                        URL.revokeObjectURL(gpxUrl);
+                        // Still try to load legs even if combined route fails
+                        if (onLoadCallback) {
+                            onLoadCallback();
+                        }
+                    });
+                });
+            } else {
+                console.error('No GPX file found in zip');
+                if (onLoadCallback) {
+                    onLoadCallback();
+                }
+            }
+        });
+    })
+    .catch(error => {
+        console.error('Error downloading combined route zip:', error);
+        if (onLoadCallback) {
+            onLoadCallback();
+        }
+    });
+}
+
 function loadRoute(routeFile, color = '#BB2100') {
     // Create the new route layer but don't add it to the map yet
     let newGPXLayer = new L.GPX(routeFile, {
@@ -246,18 +314,11 @@ function initMap() {
         maxZoom: 12, attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-    // Load and display the GPX track
-    loadRoute(GPX_FILE1);
-    setTimeout(() => {
-        loadRoute(GPX_FILE2);
+    // Load combined track first, then individual legs after it loads
+    loadCombinedRoute(GPX_COMBINED_ZIP, () => {
+        // Only load individual legs after combined route is loaded
         getLegs('small');
-        // setTimeout(() => {
-        //     getLegs('medium');
-        //     setTimeout(() => {
-        //         getLegs('full');
-        //     }, 100);
-        // }, 100);
-    }, 100);
+    });
 
     map.addLayer(markerClusterGroup);
 
@@ -384,7 +445,7 @@ function startAutoScroll() {
             gallery.scrollLeft += scrollAmount;
         } else {
             // setTimeout(() => {gallery.scrollLeft = 0}, 1000);
-            loadMoreImages();
+            // loadMoreImages(); // Removed automatic loading when scroll reaches end
         }
     }, scrollInterval);
 }
