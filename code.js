@@ -141,8 +141,10 @@ function initImages() {
         .then(images => {
             allImages = images;
             initMapWithImages();
-            // loadMoreImages(); // Removed automatic loading - images now load only manually
-            setTimeout(document.getElementById('loadMore').style.display = 'flex', 3000);
+            loadMoreImages();
+            setTimeout(() => {
+                document.getElementById('loadMore').style.display = 'flex';
+            }, 3000);
         })
         .catch(error => console.error('Error loading images:', error));
 }
