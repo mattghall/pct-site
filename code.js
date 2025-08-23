@@ -36,11 +36,15 @@ var map;
 let currentGPXLayer = null;
 let mainBounds = null;
 
+// Track GPX loading progress
+let totalLegsToLoad = 0;
+let legsLoaded = 0;
+let allLegsLoadedCallback = null;
+
 $(function () {
     feather.replace();
     initMap();
     setIntroImageHeight();
-    initImages();
     initBlog();
     initAutoScroll();
     document.addEventListener('click', function (event) {
@@ -59,14 +63,14 @@ const defaultIcon = L.icon({
 });
 
 const selectedIcon = L.icon({
-    iconUrl: 'resources/img/camera-blue.svg', // Path to your selected icon
+    iconUrl: 'resources/img/camera-blue.svg', 
     iconSize: [25, 25],
     iconAnchor: [12.5, 12.5],
     popupAnchor: [0, -12.5]
 })
 
 const hoverIcon = L.icon({
-    iconUrl: 'resources/img/camera-orange.svg', // Path to your selected icon
+    iconUrl: 'resources/img/camera-orange.svg', 
     iconSize: [25, 25],
     iconAnchor: [12.5, 12.5],
     popupAnchor: [0, -12.5]
@@ -171,14 +175,21 @@ async function getLegs(size) {
     .then(buffer => {
         // 2. Unzip using JSZip
         JSZip.loadAsync(buffer).then(zip => {
+            // Count total GPX files to track loading progress
+            const gpxFiles = Object.keys(zip.files).filter(filename => filename.toLowerCase().endsWith('.gpx'));
+            totalLegsToLoad = gpxFiles.length;
+            legsLoaded = 0;
+            
+            // Set callback to initialize images after all legs load
+            allLegsLoadedCallback = initImages;
+            
+            console.log(`Loading ${totalLegsToLoad} GPX legs...`);
+            
             // List files in the ZIP
-            Object.keys(zip.files).forEach(filename => {
-                // Only process .gpx files
-                if (filename.toLowerCase().endsWith('.gpx')) {
-                    zip.files[filename].async('string').then(content => {
-                        loadLeg(content); // Pass GPX XML string
-                    });
-                }
+            gpxFiles.forEach(filename => {
+                zip.files[filename].async('string').then(content => {
+                    loadLeg(content); // Pass GPX XML string
+                });
             });
         });
     });
@@ -207,17 +218,28 @@ function loadLeg(gpxContent) {
     polyline_options: {
       color: color,
       opacity: 1,
-      weight: 4
+      weight: 4, 
+      pane: 'overlayPane' 
     },
     marker_options: markerOptions,
   }).on('loaded', function (e) {
     legLayer.addTo(map);
-    // Release the object URL after loading
+    legLayer.bringToFront();
     URL.revokeObjectURL(gpxUrl);
+    
+    legsLoaded++;
+    console.log(`Loaded leg ${legsLoaded}/${totalLegsToLoad}`);
+    
+    // If all legs are loaded, call the callback (to init images)
+    if (legsLoaded >= totalLegsToLoad && allLegsLoadedCallback) {
+      console.log('All GPX legs loaded, initializing images...');
+      allLegsLoadedCallback();
+      allLegsLoadedCallback = null; // Prevent multiple calls
+    }
   });
 }
 
-function loadCombinedRoute(zipFile, onLoadCallback, color = '#BB2100') {
+function loadCombinedRoute(zipFile, onLoadCallback, color = '#63dbff') {
     // Download and extract the combined route zip file
     fetch(zipFile)
     .then(response => response.arrayBuffer())
@@ -239,7 +261,7 @@ function loadCombinedRoute(zipFile, onLoadCallback, color = '#BB2100') {
                     let combinedGPXLayer = new L.GPX(gpxUrl, {
                         async: true,
                         polyline_options: {
-                            color: color, opacity: 1, weight: 6
+                            color: color, opacity: 1, weight: 4
                         }, marker_options: markerOptions,
                     }).on('loaded', function (e) {
                         // Set as current GPX layer
@@ -248,6 +270,7 @@ function loadCombinedRoute(zipFile, onLoadCallback, color = '#BB2100') {
                         }
                         currentGPXLayer = combinedGPXLayer;
                         combinedGPXLayer.addTo(map);
+                        combinedGPXLayer.bringToBack();
                         mainBounds = e.target.getBounds();
                         map.fitBounds(mainBounds);
                         
@@ -291,7 +314,7 @@ function loadRoute(routeFile, color = '#BB2100') {
     let newGPXLayer = new L.GPX(routeFile, {
         async: true,
         polyline_options: {
-            color: color, opacity: 1, weight: 6
+            color: color, opacity: 1, weight: 4
         }, marker_options: markerOptions,
     }).on('loaded', function (e) {
         // Once the new route is loaded, remove the old route

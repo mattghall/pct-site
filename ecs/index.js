@@ -7,8 +7,10 @@ const cloudfront = new CloudFrontClient({ region: 'us-west-2' });
 const BUCKET = 'trailmatt.com';
 const CLOUDFRONT_DISTRIBUTION_ID = process.env.CLOUDFRONT_DISTRIBUTION_ID; 
 
-// Configure for bigger/smaller combined files. 3 is currently compressing down to about 320k
-const COMBINED_POINT_INTERVAL = 3; 
+// Configuration: take every Nth data point for combined track
+const COMBINED_POINT_INTERVAL = 3; // Configurable - change this to make file smaller/larger
+const START_SECTION = 'PCTCA_Q_trimmed.gpx'; // Starting section - configurable
+const END_SECTION = 'PCTWA_L_trimmed.gpx'; // Ending section 
 
 async function listFiles(prefix) {
   const cmd = new ListObjectsV2Command({ Bucket: BUCKET, Prefix: prefix });
@@ -68,25 +70,22 @@ function streamToBuffer(stream) {
   console.log('- Legs third:', legsThird.length);
   console.log('- Sections tenth:', sectionsTenth.length);
 
-  // Define files for each zip
+  // Define files for each zip (excluding combined files since they're separate now)
   const smallFiles = [
-    combined.find(f => f.endsWith('tiny.gpx')),
     ...legsTenth
   ].filter(Boolean);
   const mediumFiles = [
-    combined.find(f => f.endsWith('medium.gpx')),
     ...legsSixth,
     ...sectionsTenth
   ].filter(Boolean);
   const fullFiles = [
-    combined.find(f => f.endsWith('full.gpx')),
     ...legsThird
   ].filter(Boolean);
 
   // Debug: Show file counts for each zip
   console.log('\nFiles per zip:');
   console.log('- Small files:', smallFiles.length);
-  console.log('- Medium files:', mediumFiles.length, '(sixth:', legsSixth.length, '+ sections:', sectionsTenth.length, '+ 1 combined)');
+  console.log('- Medium files:', mediumFiles.length, '(sixth:', legsSixth.length, '+ sections:', sectionsTenth.length, ')');
   console.log('- Full files:', fullFiles.length);
 
   // Output S3 keys
@@ -108,7 +107,7 @@ function streamToBuffer(stream) {
     let pointCount = 0;
     let totalPoints = 0;
 
-    // Add each file's track points
+    // Add each file's track points in order (sections are already geographically ordered)
     for (const key of fileKeys) {
       const s3Obj = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: key }));
       const gpxContent = await streamToBuffer(s3Obj.Body);
@@ -133,7 +132,7 @@ function streamToBuffer(stream) {
   </trk>
 </gpx>`;
 
-    console.log(`Combined GPX: ${pointCount} points (from ${totalPoints} total)`);
+    console.log(`Combined GPX: ${pointCount} points (from ${totalPoints} total) - using sections`);
 
     // Upload combined GPX to S3
     await s3.send(new PutObjectCommand({
@@ -149,7 +148,15 @@ function streamToBuffer(stream) {
 // Create combined track
   const combinedSmallKey = 'tracks/combined/combined-small.gpx';
   
-  await createCombinedGPX(legsTenth, combinedSmallKey, COMBINED_POINT_INTERVAL);
+  // Filter sections to only include the range we've hiked
+  const sectionsInRange = sectionsTenth.filter(section => {
+    const filename = section.split('/').pop();
+    return filename >= START_SECTION && filename <= END_SECTION;
+  }).sort(); // Sort alphabetically to ensure correct geographic order
+  
+  console.log(`Using ${sectionsInRange.length} sections from ${START_SECTION} to ${END_SECTION}`);
+  
+  await createCombinedGPX(sectionsInRange, combinedSmallKey, COMBINED_POINT_INTERVAL);
   console.log('Combined small GPX created:', combinedSmallKey);
 
   // Compress the combined track
@@ -157,11 +164,8 @@ function streamToBuffer(stream) {
   await zipFilesToS3([combinedSmallKey], combinedZipKey);
   console.log('Combined small ZIP created:', combinedZipKey);
 
-  // Update file lists 
-  const updatedSmallFiles = [...smallFiles, combinedSmallKey];
-
-  // Create and upload each zip sequentially
-  await zipFilesToS3(updatedSmallFiles, smallZipKey);
+  // Create and upload each zip sequentially (no longer including combined files in individual zips)
+  await zipFilesToS3(smallFiles, smallZipKey);
   console.log('Small zip uploaded:', smallZipKey);
   await zipFilesToS3(mediumFiles, mediumZipKey);
   console.log('Medium zip uploaded:', mediumZipKey);
